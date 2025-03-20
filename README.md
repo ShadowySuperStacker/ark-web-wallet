@@ -2,6 +2,14 @@
 
 A simple web interface for interacting with the Ark Protocol on Bitcoin Signet via the bark CLI.
 
+## Demo
+
+![Ark Wallet Interface Demo](demo.png)
+
+*A screenshot of the Ark Wallet Interface in action*
+
+For a video demonstration of the interface, see the included [demo.mp4](demo.mp4) file.
+
 ## What is this?
 
 This project provides a web interface that simplifies interaction with the `bark` command-line tool. It is **not** a complete wallet implementation itself, but rather a frontend that makes the functionality of the Ark CLI more accessible.
