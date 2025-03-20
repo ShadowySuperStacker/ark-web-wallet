@@ -275,14 +275,21 @@
             </div>
             <div class="p-4">
                 <h3 class="text-lg font-semibold mb-2">What is Ark?</h3>
-                <p class="mb-3"><strong>Important:</strong> Ark is a very new Bitcoin Layer 2 protocol. This wallet helps you use Ark without needing to know all the technical details.</p>
-                <p class="mb-3">Ark enables payments without having to create channels first.</p>
+                <p class="mb-3"><strong>Important:</strong> Ark is a new Bitcoin Layer 2 protocol that enables cheap on-boarding, low and predictable fees, and fast transaction confirmation.</p>
+                <p class="mb-3">The protocol centers around an Ark Service Provider (ASP) that initiates and coordinates rounds. In these rounds, all money is confirmed in a single shared UTXO, allowing for efficient off-chain transactions.</p>
                 
                 <h3 class="text-lg font-semibold mb-2 mt-4">Key Concepts</h3>
-                <div class="mb-2"><strong>VTXOs (Virtual Transaction Outputs):</strong> Similar to Bitcoin's UTXOs, but they exist off-chain until needed on-chain.</div>
-                <div class="mb-2"><strong>Rounds:</strong> Collaborative processes where users can refresh their VTXOs.</div>
-                <div class="mb-2"><strong>Expiry Height:</strong> The block height at which a VTXO expires. The closer a VTXO gets to its expiry, the more important it is to refresh it.</div>
-                <div class="mb-2"><strong>Refresh:</strong> The process of extending a VTXO's lifetime and possibly changing its type (e.g., from "arkoor" to "round").</div>
+                <div class="mb-2"><strong>VTXOs (Virtual Transaction Outputs):</strong> Your share in an Ark round. Similar to Bitcoin's UTXOs, but they exist off-chain until needed on-chain. You maintain full control of your funds through unilateral exits.</div>
+                <div class="mb-2"><strong>Rounds:</strong> Collaborative processes where users swap VTXOs for new ones. Rounds create transaction trees with minimal on-chain footprint.</div>
+                <div class="mb-2"><strong>Expiry Height:</strong> The block height at which a VTXO expires (typically 11520 blocks or ~28 days on mainnet, shorter on Signet). If no unilateral exit is performed before expiry, the ASP can reclaim all funds in the round.</div>
+                <div class="mb-2"><strong>Refresh:</strong> The process of swapping an old VTXO for a new one before expiry, extending its lifetime and possibly changing its type.</div>
+                <div class="mb-2"><strong>ArkOOR transactions:</strong> "Ark out-of-round" transactions that allow instant transfers of VTXOs without waiting for a round, making payments faster.</div>
+                
+                <h3 class="text-lg font-semibold mb-2 mt-4">Transaction Types</h3>
+                <div class="mb-2"><strong>Type "arkoor":</strong> Created through an Ark out-of-round transaction. Faster but with a slightly different trust model.</div>
+                <div class="mb-2"><strong>Type "round":</strong> Created in rounds. More secure as they enable unilateral exit without any dependency on previous holders.</div>
+                <div class="mb-2"><strong>Type "board":</strong> Created when boarding on-chain Bitcoin into the Ark protocol.</div>
+                <div class="mb-2"><strong>Type "bolt11change":</strong> Change from a Lightning payment.</div>
                 
                 <h3 class="text-lg font-semibold mb-2 mt-4">Common Actions</h3>
                 <div class="mb-2"><strong>Receiving Funds:</strong> Share your VTXO pubkey with others. For testing, you can get free signet sats from the <a href="https://signet.2nd.dev" target="_blank" class="text-ark-orange hover:underline">Ark faucet</a>.</div>
@@ -294,23 +301,26 @@
                 <div class="mb-4">
                     <strong>Boarding:</strong> Taking on-chain bitcoin off-chain, onto an Ark
                     <p class="mt-1 text-sm">This allows you to move your on-chain funds into the Ark protocol. You'll need to have an on-chain balance first. After boarding, you'll see a new VTXO with the type "board".</p>
-                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Command: <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark board "10000 sat"</code> or <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark board --all</code></p>
                 </div>
                 
                 <div class="mb-2">
-                    <strong>Unilateral Exit:</strong> Taking off-chain bitcoin on-chain, without any cooperation from the Ark server
-                    <p class="mt-1 text-sm">This allows you to retrieve your sats on-chain if needed. The process involves broadcasting multiple transactions sequentially (takes 1-2 hours).</p>
+                    <strong>Unilateral Exit:</strong> Taking off-chain bitcoin on-chain, without any cooperation from the ASP
+                    <p class="mt-1 text-sm">This allows you to retrieve your sats on-chain at any time by broadcasting your VTXO transaction. The process involves sequential transactions and takes 1-2 hours due to relative timelocks.</p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Requirements:</p>
                     <ul class="list-disc pl-5 text-sm text-gray-600 dark:text-gray-300">
                         <li>At least one VTXO</li>
                         <li>At least 15,000 on-chain sats per VTXO you're exiting</li>
                         <li>At least one confirmation for all on-chain UTXOs</li>
                     </ul>
-                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Command: <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark exit --vtxos &lt;your_vtxo_id&gt; --wait</code> or <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark exit --all --wait</code></p>
+                </div>
+
+                <div class="mb-2 mt-4">
+                    <strong>Cooperative Exit:</strong> A faster way to exit with ASP cooperation
+                    <p class="mt-1 text-sm">While not directly available in this interface, cooperative exits are possible with ASP cooperation and have a much smaller on-chain footprint than unilateral exits.</p>
                 </div>
                 
                 <div class="mt-4 text-sm text-gray-600 dark:text-gray-300">
-                    For more detailed information, see the <a href="https://docs.second.tech/getting-started/barking-on-signet/advanced/" target="_blank" class="text-ark-orange hover:underline">Advanced bark documentation</a>.
+                    For more detailed information, see the <a href="https://docs.second.tech/protocol/intro/" target="_blank" class="text-ark-orange hover:underline">Official Ark Protocol Documentation</a>.
                 </div>
             </div>
         </div>
