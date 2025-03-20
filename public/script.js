@@ -619,8 +619,15 @@ async function sendPayment() {
             }
         });
         
-        // Show success message
-        showToast('Payment sent successfully!', 'success');
+        // Controleer of er al een "Payment sent successfully!" toast zichtbaar is
+        const successToastExists = Array.from(document.querySelectorAll('#toast-container div'))
+            .some(toast => toast.textContent.includes('Payment sent successfully!'));
+        
+        // Alleen een nieuwe toast tonen als er nog geen is
+        if (!successToastExists) {
+            // Show success message
+            showToast('Payment sent successfully!', 'success');
+        }
         
         // Show modal with next steps guidance
         showGuidanceModal(
