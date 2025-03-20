@@ -366,6 +366,114 @@ app.post('/api/delete-wallet', async (req, res) => {
   }
 });
 
+// Endpoint to board (move onchain funds to Ark)
+app.post('/api/board', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const args = [];
+    
+    if (amount) {
+      args.push(`"${amount}"`);
+    } else {
+      args.push('--all');
+    }
+    
+    const output = await executeBark('board', args);
+    console.log('Board output:', output);
+    
+    res.json({ 
+      success: true, 
+      message: 'Successfully boarded funds to Ark',
+      details: output 
+    });
+  } catch (error) {
+    console.error('Error boarding funds:', error);
+    res.status(500).json({ error: 'Failed to board funds', details: error.message });
+  }
+});
+
+// Endpoint to check onchain balance
+app.get('/api/onchain-balance', async (req, res) => {
+  try {
+    const output = await executeBark('onchain', ['balance']);
+    
+    // Try to parse the output to get the balance
+    const balanceMatch = output.match(/Total:\s+([\d,]+)/);
+    const balance = balanceMatch ? parseInt(balanceMatch[1].replace(/,/g, '')) : 0;
+    
+    res.json({ 
+      balance,
+      details: output 
+    });
+  } catch (error) {
+    console.error('Error getting onchain balance:', error);
+    res.status(500).json({ error: 'Failed to get onchain balance', details: error.message });
+  }
+});
+
+// Endpoint to get onchain address
+app.get('/api/onchain-address', async (req, res) => {
+  try {
+    const output = await executeBark('onchain', ['address']);
+    
+    // Try to parse the JSON output that bark returns
+    try {
+      // Parse the JSON object in the output
+      const jsonData = JSON.parse(output);
+      res.json({ 
+        address: jsonData.address,
+        details: output 
+      });
+    } catch (jsonError) {
+      // Fallback to just using the string if JSON parsing fails
+      const address = output.trim();
+      res.json({ 
+        address,
+        details: output 
+      });
+    }
+  } catch (error) {
+    console.error('Error getting onchain address:', error);
+    res.status(500).json({ error: 'Failed to get onchain address', details: error.message });
+  }
+});
+
+// Endpoint to initiate unilateral exit
+app.post('/api/exit', async (req, res) => {
+  try {
+    const { vtxoId, exitAll } = req.body;
+    const args = ['--wait'];
+    
+    if (exitAll) {
+      args.push('--all');
+    } else if (vtxoId) {
+      args.push('--vtxos', vtxoId);
+    } else {
+      return res.status(400).json({ error: 'Must specify either vtxoId or exitAll' });
+    }
+    
+    // We can't wait for the full exit process to complete as it takes 1-2 hours
+    // So we'll respond quickly and let the process continue in the background
+    // In a production app, we would use websockets to update the UI as the exit progresses
+    
+    // Start the exit process
+    executeBark('exit', args).then(output => {
+      console.log('Exit completed successfully:', output);
+    }).catch(error => {
+      console.error('Error during exit process:', error);
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Unilateral exit process started. This will take 1-2 hours to complete.',
+      warning: 'The process will continue in the background. Check your terminal for progress.'
+    });
+  } catch (error) {
+    console.error('Error starting unilateral exit:', error);
+    res.status(500).json({ error: 'Failed to start unilateral exit', details: error.message });
+  }
+});
+
 // Start the server after checking prerequisites
 checkServerPrerequisites((ready) => {
   // Try different ports if the default is in use

@@ -199,6 +199,75 @@
             </div>
         </div>
 
+        <!-- Advanced Features Card -->
+        <div class="card mt-6">
+            <div class="card-header text-white bg-ark-orange">
+                Advanced Features
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Boarding Section -->
+                    <div class="border dark:border-gray-700 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold mb-3">Boarding</h3>
+                        <p class="mb-3 text-sm">Move your on-chain bitcoin into the Ark protocol.</p>
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm">On-chain balance:</span>
+                                <span id="onchain-balance" class="font-semibold">Loading...</span>
+                            </div>
+                            <div class="flex flex-col mb-2">
+                                <span class="text-sm mb-1">On-chain address:</span>
+                                <div class="flex items-center">
+                                    <span id="onchain-address" class="text-xs break-all bg-gray-100 dark:bg-gray-800 p-2 rounded w-full">Loading...</span>
+                                    <button id="copy-onchain-address-btn" class="ml-2 text-xs" title="Copy address">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <div class="mb-2">
+                                <label for="board-amount" class="text-sm font-semibold mb-1 block">Amount to board (sats)</label>
+                                <div class="flex">
+                                    <input type="number" id="board-amount" placeholder="Leave empty to board all" class="form-input mb-0">
+                                </div>
+                            </div>
+                            <div class="flex justify-between mt-2">
+                                <button id="refresh-onchain-btn" class="btn-secondary text-xs py-1 px-2">
+                                    <i class="bi bi-arrow-repeat"></i> Refresh
+                                </button>
+                                <button id="board-btn" class="btn-primary">Board Funds</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Unilateral Exit Section -->
+                    <div class="border dark:border-gray-700 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold mb-3">Unilateral Exit</h3>
+                        <p class="mb-3 text-sm">Move your off-chain funds back to the Bitcoin blockchain without cooperation from the server.</p>
+                        
+                        <div class="alert-warning text-xs mb-4">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Warning:</strong> This process takes 1-2 hours to complete and requires at least 15,000 on-chain sats per VTXO.
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="exit-vtxo" class="text-sm font-semibold mb-1 block">VTXO to exit (optional)</label>
+                            <select id="exit-vtxo" class="form-input">
+                                <option value="">-- Exit all VTXOs --</option>
+                                <!-- VTXO options will be added dynamically -->
+                            </select>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button id="exit-btn" class="btn-danger">Start Exit Process</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Help Section (moved to bottom) -->
         <div class="card mt-6 bg-blue-50 dark:bg-blue-900">
             <div class="card-header text-white bg-ark-orange">
@@ -220,6 +289,29 @@
                 <div class="mb-2"><strong>Sending Payments:</strong> You can send payments to other Ark users (via VTXO pubkey), to Lightning invoices, or to Bitcoin addresses.</div>
                 <div class="mb-2"><strong>Refreshing VTXOs:</strong> If your VTXOs are nearing expiry or you want to consolidate multiple VTXOs, use the "Refresh in Round" button.</div>
                 <div class="mb-2"><strong>Testing Your Wallet:</strong> Try buying something from the <a href="https://signet.2nd.dev/store" target="_blank" class="text-ark-orange hover:underline">Ark Test Store</a>!</div>
+                
+                <h3 class="text-lg font-semibold mb-2 mt-4">Advanced Features</h3>
+                <div class="mb-4">
+                    <strong>Boarding:</strong> Taking on-chain bitcoin off-chain, onto an Ark
+                    <p class="mt-1 text-sm">This allows you to move your on-chain funds into the Ark protocol. You'll need to have an on-chain balance first. After boarding, you'll see a new VTXO with the type "board".</p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Command: <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark board "10000 sat"</code> or <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark board --all</code></p>
+                </div>
+                
+                <div class="mb-2">
+                    <strong>Unilateral Exit:</strong> Taking off-chain bitcoin on-chain, without any cooperation from the Ark server
+                    <p class="mt-1 text-sm">This allows you to retrieve your sats on-chain if needed. The process involves broadcasting multiple transactions sequentially (takes 1-2 hours).</p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Requirements:</p>
+                    <ul class="list-disc pl-5 text-sm text-gray-600 dark:text-gray-300">
+                        <li>At least one VTXO</li>
+                        <li>At least 15,000 on-chain sats per VTXO you're exiting</li>
+                        <li>At least one confirmation for all on-chain UTXOs</li>
+                    </ul>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Command: <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark exit --vtxos &lt;your_vtxo_id&gt; --wait</code> or <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">bark exit --all --wait</code></p>
+                </div>
+                
+                <div class="mt-4 text-sm text-gray-600 dark:text-gray-300">
+                    For more detailed information, see the <a href="https://docs.second.tech/getting-started/barking-on-signet/advanced/" target="_blank" class="text-ark-orange hover:underline">Advanced bark documentation</a>.
+                </div>
             </div>
         </div>
     </div>

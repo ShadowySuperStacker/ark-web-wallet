@@ -24,6 +24,16 @@ const walletStatusAlert = document.getElementById('wallet-status-alert');
 const resetModalClose = document.getElementById('reset-modal-close');
 const themeToggle = document.getElementById('theme-toggle');
 
+// Advanced Features Elements
+const onchainBalanceEl = document.getElementById('onchain-balance');
+const onchainAddressEl = document.getElementById('onchain-address');
+const copyOnchainAddressBtn = document.getElementById('copy-onchain-address-btn');
+const boardAmountInput = document.getElementById('board-amount');
+const refreshOnchainBtn = document.getElementById('refresh-onchain-btn');
+const boardBtn = document.getElementById('board-btn');
+const exitVtxoSelect = document.getElementById('exit-vtxo');
+const exitBtn = document.getElementById('exit-btn');
+
 // Variables
 let currentBlockHeight = 0;
 let vtxoData = [];
@@ -472,4 +482,236 @@ async function initApp() {
 }
 
 // Start the application
-initApp(); 
+initApp();
+
+// Advanced Features API Functions
+async function fetchOnchainBalance() {
+    try {
+        const response = await fetch('/api/onchain-balance');
+        if (!response.ok) {
+            throw new Error('Failed to fetch onchain balance');
+        }
+        const data = await response.json();
+        
+        // Update display
+        onchainBalanceEl.textContent = data.balance.toLocaleString() + ' sats';
+        
+        return data;
+    } catch (error) {
+        console.error('Error fetching onchain balance:', error);
+        showToast('Error fetching onchain balance: ' + error.message, 'error');
+    }
+}
+
+async function fetchOnchainAddress() {
+    try {
+        const response = await fetch('/api/onchain-address');
+        if (!response.ok) {
+            throw new Error('Failed to fetch onchain address');
+        }
+        
+        // Parse de JSON response
+        const data = await response.json();
+        const address = data.address;
+        
+        // Update display
+        onchainAddressEl.textContent = address;
+        onchainAddressEl.title = address;
+        
+        return address;
+    } catch (error) {
+        console.error('Error fetching onchain address:', error);
+        showToast('Error fetching onchain address: ' + error.message, 'error');
+    }
+}
+
+async function boardFunds() {
+    try {
+        const amount = boardAmountInput.value.trim();
+        
+        showToast('Boarding funds... This may take a moment.', 'info');
+        
+        const response = await fetch('/api/board', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: amount || null
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to board funds');
+        }
+        
+        const data = await response.json();
+        
+        // Refresh relevant data
+        await Promise.all([
+            fetchBalance(),
+            fetchVtxos(),
+            fetchOnchainBalance()
+        ]);
+        
+        // Clear input
+        boardAmountInput.value = '';
+        
+        // Show success message
+        showToast('Funds boarded successfully!', 'success');
+        
+        // Show guidance
+        showGuidanceModal(
+            'Funds Boarded Successfully',
+            `
+            <p class="mb-3">Your on-chain Bitcoin has been successfully moved to the Ark protocol!</p>
+            <p class="mb-3">You should now see a new VTXO of type "board" in your VTXO list.</p>
+            <p>This VTXO can be used just like any other VTXO for sending payments within the Ark network.</p>
+            `,
+            'Got it!',
+            () => {}
+        );
+        
+        return data;
+    } catch (error) {
+        console.error('Error boarding funds:', error);
+        showToast('Error boarding funds: ' + error.message, 'error');
+    }
+}
+
+async function exitFunds() {
+    try {
+        const vtxoId = exitVtxoSelect.value;
+        
+        // Confirmation modal for starting the exit process
+        showGuidanceModal(
+            'Confirm Unilateral Exit',
+            `
+            <div class="alert-warning mb-4">
+                <i class="bi bi-exclamation-triangle-fill"></i> <strong>Warning!</strong> This process:
+                <ul class="list-disc pl-5 mt-2">
+                    <li>Takes 1-2 hours to complete</li>
+                    <li>Requires at least 15,000 on-chain sats per VTXO</li>
+                    <li>Cannot be cancelled once started</li>
+                </ul>
+            </div>
+            <p>Are you sure you want to proceed with the unilateral exit?</p>
+            `,
+            'Start Exit Process',
+            async () => {
+                try {
+                    showToast('Starting exit process... This will take 1-2 hours to complete.', 'info');
+                    
+                    const response = await fetch('/api/exit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            vtxoId: vtxoId || null,
+                            exitAll: !vtxoId
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to start exit process');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Show success message
+                    showToast('Exit process started successfully!', 'success');
+                    
+                    // Show guidance
+                    showGuidanceModal(
+                        'Exit Process Started',
+                        `
+                        <p class="mb-3">The unilateral exit process has been started successfully!</p>
+                        <p class="mb-3">This process will take 1-2 hours to complete. You can check the progress in your terminal.</p>
+                        <p class="mb-3">Once complete, your funds will be available on-chain.</p>
+                        <div class="alert-info mt-4">
+                            <i class="bi bi-info-circle"></i> <strong>Note:</strong> You can continue using the wallet normally while the exit process runs in the background.
+                        </div>
+                        `,
+                        'Got it!',
+                        () => {}
+                    );
+                    
+                    return data;
+                } catch (error) {
+                    console.error('Error starting exit process:', error);
+                    showToast('Error starting exit process: ' + error.message, 'error');
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Error confirming exit:', error);
+        showToast('Error: ' + error.message, 'error');
+    }
+}
+
+// Function to update the exit VTXO select with current VTXOs
+function updateExitVtxoSelect() {
+    // Clear current options except the first one
+    while (exitVtxoSelect.options.length > 1) {
+        exitVtxoSelect.remove(1);
+    }
+    
+    // Add current VTXOs as options
+    vtxoData.forEach(vtxo => {
+        const option = document.createElement('option');
+        option.value = vtxo.id;
+        option.textContent = `${vtxo.id.substring(0, 8)}... (${vtxo.amount.toLocaleString()} sats, ${vtxo.type})`;
+        exitVtxoSelect.appendChild(option);
+    });
+}
+
+// Additional Event Listeners for Advanced Features
+refreshOnchainBtn.addEventListener('click', async () => {
+    await Promise.all([
+        fetchOnchainBalance(),
+        fetchOnchainAddress()
+    ]);
+    showToast('On-chain info refreshed', 'success');
+});
+
+copyOnchainAddressBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(onchainAddressEl.title);
+    showToast('On-chain address copied to clipboard', 'success');
+});
+
+boardBtn.addEventListener('click', boardFunds);
+
+exitBtn.addEventListener('click', exitFunds);
+
+// Extend fetchVtxos to update the exit VTXO select
+const originalFetchVtxos = fetchVtxos;
+fetchVtxos = async function() {
+    const result = await originalFetchVtxos.apply(this, arguments);
+    updateExitVtxoSelect();
+    return result;
+};
+
+// Initialize advanced features
+async function initAdvancedFeatures() {
+    try {
+        await Promise.all([
+            fetchOnchainBalance(),
+            fetchOnchainAddress()
+        ]);
+    } catch (error) {
+        console.error('Error initializing advanced features:', error);
+    }
+}
+
+// Extend the initApp function to also initialize advanced features
+const originalInitApp = initApp;
+initApp = async function() {
+    await originalInitApp.apply(this, arguments);
+    await initAdvancedFeatures();
+};
+
+// Initialize advanced features immediately
+initAdvancedFeatures(); 
