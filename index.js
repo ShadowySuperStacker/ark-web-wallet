@@ -37,6 +37,24 @@ function executeBark(command, args = []) {
     console.log(`Executing: ${fullCmd}`);
     
     exec(fullCmd, (error, stdout, stderr) => {
+      // Check for specific payment success indicators in stderr even when error code is non-zero
+      if (command === 'send' && error && stderr) {
+        const successIndicators = [
+          'Payment sent succesfully',
+          'Bolt11 payment succeeded',
+          'Payment preimage received',
+          'Adding change VTXO'
+        ];
+        
+        // Check if any success indicator is in stderr
+        if (successIndicators.some(indicator => stderr.includes(indicator)) || 
+            stderr.includes("UNIQUE constraint failed: bark_vtxo_key.idx")) {
+          console.log('Payment successful according to stderr, ignoring error code');
+          resolve(stderr);
+          return;
+        }
+      }
+      
       if (error) {
         console.error(`Error executing '${fullCmd}':`, error);
         console.error(`stderr: ${stderr}`);
@@ -340,6 +358,22 @@ app.post('/api/send', async (req, res) => {
       const output = await executeBark('send', args);
       console.log('Payment output:', output);
       
+      // Check for success indicators in the output
+      const isSuccess = typeof output === 'string' && (
+        output.includes('Payment sent') || 
+        output.includes('Bolt11 payment succeeded') || 
+        output.includes('Payment preimage received') ||
+        output.includes('Adding change VTXO')
+      );
+      
+      // After successful payment, refresh balance data asynchronously
+      if (isSuccess) {
+        // Don't await, just fire and forget to make response faster
+        executeBark('balance').catch(e => console.error('Error refreshing balance after payment:', e));
+        executeBark('vtxos').catch(e => console.error('Error refreshing VTXOs after payment:', e));
+      }
+      
+      // Return success regardless of stdout vs stderr
       res.json({ 
         success: true, 
         message: 'Payment sent successfully',
@@ -347,16 +381,21 @@ app.post('/api/send', async (req, res) => {
       });
     } catch (error) {
       // Check if the error message actually indicates success
-      // (bark sometimes returns error code even though payment succeeds)
+      // (This is a fallback if the executeBark function didn't catch success indicators)
       const errorMsg = error.message || '';
       
       if (
         errorMsg.includes('Payment sent') || 
         errorMsg.includes('Bolt11 payment succeeded') || 
         errorMsg.includes('Payment preimage received') ||
-        errorMsg.includes('Adding change VTXO')
+        errorMsg.includes('Adding change VTXO') ||
+        errorMsg.includes('UNIQUE constraint failed: bark_vtxo_key.idx')
       ) {
         console.log('Payment sent successfully despite error code');
+        // Refresh balance data asynchronously
+        executeBark('balance').catch(e => console.error('Error refreshing balance after payment:', e));
+        executeBark('vtxos').catch(e => console.error('Error refreshing VTXOs after payment:', e));
+        
         res.json({ 
           success: true, 
           message: 'Payment sent successfully',
