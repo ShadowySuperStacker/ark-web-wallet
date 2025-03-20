@@ -13,6 +13,11 @@ const vtxoRefreshAlert = document.getElementById('vtxo-refresh-alert');
 const actionGuidanceModal = new bootstrap.Modal(document.getElementById('actionGuidanceModal'));
 const actionGuidanceModalBody = document.getElementById('actionGuidanceModalBody');
 const actionGuidanceButton = document.getElementById('actionGuidanceButton');
+const walletStatusAlert = document.getElementById('wallet-status-alert');
+const walletStatusMessage = document.getElementById('wallet-status-message');
+const deleteWalletBtn = document.getElementById('delete-wallet-btn');
+const confirmDeleteWalletBtn = document.getElementById('confirm-delete-wallet');
+const resetWalletModal = new bootstrap.Modal(document.getElementById('resetWalletModal'));
 
 // Create a Bootstrap toast instance
 const toast = new bootstrap.Toast(toastElement, { 
@@ -41,6 +46,47 @@ function estimateBlockTime(blockHeight) {
     futureDate.setMinutes(futureDate.getMinutes() + (blocksRemaining * 10));
     
     return formatDate(futureDate);
+}
+
+// Helper function to show wallet status
+function showWalletStatus(message, type = 'info') {
+    walletStatusMessage.textContent = message;
+    walletStatusAlert.classList.remove('d-none', 'alert-info', 'alert-warning', 'alert-danger', 'alert-success');
+    walletStatusAlert.classList.add(`alert-${type}`);
+    walletStatusAlert.classList.add('show');
+}
+
+// Helper function to check wallet status
+async function checkWalletStatus() {
+    try {
+        const response = await fetch('/api/wallet-status');
+        const data = await response.json();
+        
+        if (data.status === 'initialized') {
+            showWalletStatus('A new Ark wallet has been created for you.', 'success');
+            
+            showGuidanceModal(
+                'Wallet Initialized',
+                `<p>A new Ark wallet has been created for you.</p>
+                <p>Your wallet is now ready to use. You can:</p>
+                <ul>
+                    <li>Receive funds using your VTXO pubkey</li>
+                    <li>Get test sats from the signet faucet</li>
+                    <li>Send payments once you have funds</li>
+                </ul>`,
+                'Get Started',
+                null
+            );
+        } else if (data.status === 'error') {
+            showWalletStatus('There was an error initializing your wallet. Some features may not work.', 'danger');
+        }
+        
+        return data.status;
+    } catch (error) {
+        console.error('Error checking wallet status:', error);
+        showWalletStatus('Could not check wallet status. Please try restarting the server.', 'danger');
+        return 'error';
+    }
 }
 
 // API Functions
@@ -265,6 +311,37 @@ function showGuidanceModal(title, body, buttonText, buttonAction) {
     actionGuidanceModal.show();
 }
 
+// Function to delete the wallet
+async function deleteWallet() {
+    try {
+        const response = await fetch('/api/delete-wallet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('Wallet successfully deleted. Reloading...', 'success');
+            
+            // Wait a moment before reloading
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+            
+            return true;
+        } else {
+            throw new Error(data.message || 'Failed to delete wallet');
+        }
+    } catch (error) {
+        console.error('Error deleting wallet:', error);
+        showToast(`Error deleting wallet: ${error.message}`, 'danger');
+        return false;
+    }
+}
+
 // Event Listeners
 refreshBalanceBtn.addEventListener('click', fetchBalance);
 refreshVtxosBtn.addEventListener('click', refreshVtxos);
@@ -297,10 +374,28 @@ paymentForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Initialize the app
-window.addEventListener('DOMContentLoaded', async () => {
-    // Load all data on page load
-    await fetchVtxoPubkey();
-    await fetchBalance();
-    await fetchVtxos();
+// Delete wallet button
+deleteWalletBtn.addEventListener('click', () => {
+    resetWalletModal.show();
+});
+
+// Confirm delete wallet button
+confirmDeleteWalletBtn.addEventListener('click', async () => {
+    resetWalletModal.hide();
+    await deleteWallet();
+});
+
+// Initialize when the page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check wallet status first
+    const walletStatus = await checkWalletStatus();
+    
+    if (walletStatus === 'error') {
+        showToast('Error initializing wallet', 'danger');
+    } else {
+        // Fetch initial data
+        await fetchBalance();
+        await fetchVtxoPubkey();
+        await fetchVtxos();
+    }
 }); 

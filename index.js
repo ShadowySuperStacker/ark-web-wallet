@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const { exec } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -14,7 +15,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // Path to the bark executable - pointing to the root directory
-const barkPath = path.join(__dirname, 'bark');
+const barkPath = './bark';
 
 // Helper function to execute bark commands
 function executeBark(command) {
@@ -25,6 +26,82 @@ function executeBark(command) {
       }
       resolve(stdout);
     });
+  });
+}
+
+// Helper function to check if a wallet exists
+function checkWalletExists() {
+  // Ark stores wallet data in ~/.bark directory
+  const homedir = require('os').homedir();
+  const barkDir = path.join(homedir, '.bark');
+  return fs.existsSync(barkDir);
+}
+
+// Initialize wallet if it doesn't exist
+function initializeWallet(callback) {
+  // Use the ASP server specified in the documentation
+  const aspServer = "ark.signet.2nd.dev";
+  // Use the esplora server specified in the documentation
+  const esploraUrl = "esplora.signet.2nd.dev";
+  
+  exec(`${barkPath} create --signet --asp=${aspServer} --esplora=${esploraUrl}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error initializing wallet: ${error.message}`);
+      console.error(`Stderr: ${stderr}`);
+      callback(false);
+      return;
+    }
+    console.log(`Wallet initialized: ${stdout}`);
+    callback(true);
+  });
+}
+
+// Check wallet status before starting the server
+function checkServerPrerequisites(callback) {
+  if (!checkWalletExists()) {
+    console.log('No wallet found. Initializing a new wallet...');
+    initializeWallet((success) => {
+      if (success) {
+        console.log('Wallet initialized successfully.');
+        callback(true);
+      } else {
+        console.error('Failed to initialize wallet. Server may not function correctly.');
+        callback(false);
+      }
+    });
+  } else {
+    console.log('Existing wallet found.');
+    callback(true);
+  }
+}
+
+// Helper function to delete wallet
+function deleteWallet() {
+  return new Promise((resolve, reject) => {
+    const homedir = require('os').homedir();
+    const barkDir = path.join(homedir, '.bark');
+    
+    if (fs.existsSync(barkDir)) {
+      // Use rimraf or fs.rm with recursive option to delete directory
+      try {
+        // For Node.js >= 14.14.0
+        if (fs.rmSync) {
+          fs.rmSync(barkDir, { recursive: true, force: true });
+        } else {
+          // For older Node.js versions
+          const rimraf = require('rimraf');
+          rimraf.sync(barkDir);
+        }
+        console.log('Wallet deleted successfully.');
+        resolve(true);
+      } catch (error) {
+        console.error('Error deleting wallet:', error);
+        reject(error);
+      }
+    } else {
+      console.log('No wallet to delete.');
+      resolve(false);
+    }
   });
 }
 
@@ -100,7 +177,42 @@ app.post('/api/send', async (req, res) => {
   }
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Ark Wallet server running on http://localhost:${port}`);
+// New endpoint to initialize or check wallet status
+app.get('/api/wallet-status', (req, res) => {
+  const walletExists = checkWalletExists();
+  if (walletExists) {
+    res.json({ status: 'ready', message: 'Wallet is ready to use.' });
+  } else {
+    initializeWallet((success) => {
+      if (success) {
+        res.json({ status: 'initialized', message: 'Wallet was initialized successfully.' });
+      } else {
+        res.status(500).json({ status: 'error', message: 'Failed to initialize wallet.' });
+      }
+    });
+  }
+});
+
+// Add endpoint to delete wallet
+app.post('/api/delete-wallet', async (req, res) => {
+  try {
+    const success = await deleteWallet();
+    if (success) {
+      res.json({ status: 'deleted', message: 'Wallet was deleted successfully.' });
+    } else {
+      res.json({ status: 'not_found', message: 'No wallet found to delete.' });
+    }
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Failed to delete wallet.', error: error.message });
+  }
+});
+
+// Start the server after checking prerequisites
+checkServerPrerequisites((ready) => {
+  app.listen(port, () => {
+    console.log(`Ark wallet interface running at http://localhost:${port}`);
+    if (!ready) {
+      console.warn('Warning: Server started but wallet initialization failed. Some functions may not work.');
+    }
+  });
 }); 
