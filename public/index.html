@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ark Wallet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-12 text-center mb-4">
+                <h1>Ark Wallet</h1>
+                <p class="text-muted">A simple web interface for the Ark Protocol on Signet</p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Balance</div>
+                    <div class="card-body">
+                        <h3 id="balance-offchain">0</h3>
+                        <p class="text-muted">Offchain Satoshis</p>
+                        <h3 id="balance-onchain">0</h3>
+                        <p class="text-muted">Onchain Satoshis</p>
+                        <button id="refresh-balance" class="btn btn-sm btn-primary mt-2">Refresh</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">Receive</div>
+                    <div class="card-body">
+                        <p>Share this VTXO pubkey to receive sats:</p>
+                        <div class="input-group mb-3">
+                            <input type="text" id="vtxo-pubkey" class="form-control" readonly>
+                            <button id="copy-pubkey" class="btn btn-outline-secondary">Copy</button>
+                        </div>
+                        <p>You can get free signet sats via <a href="https://signet.2nd.dev" target="_blank">the faucet</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">Send</div>
+                    <div class="card-body">
+                        <form id="payment-form">
+                            <div class="mb-3">
+                                <label for="destination" class="form-label">Destination</label>
+                                <input type="text" class="form-control" id="destination" placeholder="Lightning invoice, LNURL, Bitcoin address or VTXO pubkey">
+                            </div>
+                            <div class="mb-3">
+                                <label for="amount" class="form-label">Amount (satoshis)</label>
+                                <input type="number" class="form-control" id="amount" placeholder="Optional for Lightning invoices">
+                            </div>
+                            <div class="mb-3">
+                                <label for="comment" class="form-label">Comment</label>
+                                <input type="text" class="form-control" id="comment" placeholder="Optional">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Pay</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>VTXOs</span>
+                        <button id="refresh-vtxos" class="btn btn-sm btn-success">Refresh in Round</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Amount (sats)</th>
+                                        <th>Type</th>
+                                        <th>Expiry Height</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vtxos-list">
+                                    <!-- VTXO items will be added here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="toast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toast-message">
+                    Message here
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 
