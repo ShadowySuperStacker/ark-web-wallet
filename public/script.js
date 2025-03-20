@@ -9,12 +9,39 @@ const refreshBalanceBtn = document.getElementById('refresh-balance');
 const refreshVtxosBtn = document.getElementById('refresh-vtxos');
 const copyPubkeyBtn = document.getElementById('copy-pubkey');
 const paymentForm = document.getElementById('payment-form');
+const vtxoRefreshAlert = document.getElementById('vtxo-refresh-alert');
+const actionGuidanceModal = new bootstrap.Modal(document.getElementById('actionGuidanceModal'));
+const actionGuidanceModalBody = document.getElementById('actionGuidanceModalBody');
+const actionGuidanceButton = document.getElementById('actionGuidanceButton');
 
 // Create a Bootstrap toast instance
 const toast = new bootstrap.Toast(toastElement, { 
     autohide: true,
     delay: 3000
 });
+
+// Current block height (approximated)
+let currentBlockHeight = 0;
+// Store VTXO data
+let currentVtxos = [];
+
+// Helper function to format a date
+function formatDate(date) {
+    return date.toLocaleString();
+}
+
+// Helper function to estimate date from block height
+function estimateBlockTime(blockHeight) {
+    // Average bitcoin block time is 10 minutes, but on signet it can vary
+    // Calculate blocks remaining 
+    const blocksRemaining = blockHeight - currentBlockHeight;
+    
+    // Calculate time in the future (10 min per block)
+    const futureDate = new Date();
+    futureDate.setMinutes(futureDate.getMinutes() + (blocksRemaining * 10));
+    
+    return formatDate(futureDate);
+}
 
 // API Functions
 async function fetchBalance() {
@@ -49,6 +76,9 @@ async function fetchVtxos() {
         const response = await fetch('/api/vtxos');
         const vtxos = await response.json();
         
+        // Store the VTXO data
+        currentVtxos = vtxos;
+        
         // Clear the existing list
         vtxosList.innerHTML = '';
         
@@ -59,22 +89,51 @@ async function fetchVtxos() {
             // Truncate the ID for display
             const idShort = `${vtxo.id.substring(0, 8)}...${vtxo.id.substring(vtxo.id.length - 8)}`;
             
+            // Determine if this VTXO is nearing expiry
+            const isNearingExpiry = vtxo.expiry_height - currentBlockHeight < 1000;
+            const expiryClass = isNearingExpiry ? 'text-danger fw-bold' : '';
+            
+            // Estimate expiry time
+            const estimatedExpiry = estimateBlockTime(vtxo.expiry_height);
+            
             // Create the table cells
             row.innerHTML = `
                 <td title="${vtxo.id}">${idShort}</td>
                 <td>${vtxo.amount_sat.toLocaleString()}</td>
                 <td>${vtxo.vtxo_type}</td>
-                <td>${vtxo.expiry_height}</td>
+                <td class="${expiryClass}" title="${isNearingExpiry ? 'Nearing expiry!' : ''}">
+                    ${vtxo.expiry_height} 
+                    <span class="text-muted small d-block">~${estimatedExpiry}</span>
+                </td>
             `;
             
             vtxosList.appendChild(row);
+            
+            // Update the current block height based on the VTXO
+            // This is an approximation, assuming expiry is usually set ~10000 blocks in the future
+            if (currentBlockHeight === 0) {
+                currentBlockHeight = vtxo.expiry_height - 10000;
+            }
         });
+        
+        // Show refresh alert if needed
+        checkVtxosNeedRefresh();
         
         showToast('VTXOs updated', 'success');
     } catch (error) {
         console.error('Error fetching VTXOs:', error);
         showToast('Error retrieving VTXOs', 'danger');
     }
+}
+
+function checkVtxosNeedRefresh() {
+    // Check if any VTXOs need refresh (non-round type or nearing expiry)
+    const needsRefresh = currentVtxos.some(vtxo => 
+        vtxo.vtxo_type !== 'round' || 
+        (vtxo.expiry_height - currentBlockHeight < 1000)
+    );
+    
+    vtxoRefreshAlert.style.display = needsRefresh ? 'block' : 'none';
 }
 
 async function refreshVtxos() {
@@ -95,6 +154,20 @@ async function refreshVtxos() {
             await fetchBalance();
             
             showToast('VTXOs successfully refreshed', 'success');
+            
+            // Show success modal
+            showGuidanceModal(
+                'VTXOs Successfully Refreshed',
+                `<p>Your VTXOs have been successfully refreshed in a round.</p>
+                <p>Results of this refresh:</p>
+                <ul>
+                    <li>The type of your VTXOs has been changed to "round"</li>
+                    <li>The expiry time of your VTXOs has been extended</li>
+                    <li>Multiple VTXOs have been consolidated into one</li>
+                </ul>`,
+                'Close',
+                null
+            );
         } else {
             throw new Error('Failed to refresh VTXOs');
         }
@@ -125,6 +198,23 @@ async function sendPayment(destination, amount, comment) {
             // Refresh balance after sending payment
             await fetchBalance();
             await fetchVtxos();
+            
+            // Show guidance modal
+            showGuidanceModal(
+                'Payment Sent Successfully',
+                `<p>Your payment has been sent successfully!</p>
+                <p>You've received change as a new VTXO.</p>
+                <p>Would you like to refresh your VTXOs? Refreshing will:</p>
+                <ul>
+                    <li>Change the type of your VTXOs</li>
+                    <li>Extend their expiry time</li>
+                    <li>Consolidate multiple VTXOs into one</li>
+                </ul>
+                <p>Would you like to refresh your VTXOs now?</p>`,
+                'Refresh VTXOs',
+                refreshVtxos
+            );
+            
             return true;
         } else {
             throw new Error(result.error || 'Failed to send payment');
@@ -149,6 +239,30 @@ function showToast(message, type = 'primary') {
     
     // Show the toast
     toast.show();
+}
+
+// Helper function to show guidance modals
+function showGuidanceModal(title, body, buttonText, buttonAction) {
+    // Set the title and body
+    document.getElementById('actionGuidanceModalLabel').textContent = title;
+    actionGuidanceModalBody.innerHTML = body;
+    
+    // Set the button text
+    actionGuidanceButton.textContent = buttonText;
+    
+    // Set up the button action
+    if (buttonAction) {
+        actionGuidanceButton.onclick = () => {
+            actionGuidanceModal.hide();
+            buttonAction();
+        };
+        actionGuidanceButton.style.display = 'block';
+    } else {
+        actionGuidanceButton.style.display = 'none';
+    }
+    
+    // Show the modal
+    actionGuidanceModal.show();
 }
 
 // Event Listeners

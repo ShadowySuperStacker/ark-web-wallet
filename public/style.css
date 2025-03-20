@@ -45,6 +45,16 @@ body {
     background-color: #f7931a !important;
 }
 
+.btn-info {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: white;
+}
+
+.bg-info {
+    background-color: #0dcaf0 !important;
+}
+
 h1 {
     color: #343a40;
 }
@@ -61,9 +71,57 @@ h1 {
     color: white;
 }
 
+/* Help section styles */
+#helpSection .card-body {
+    font-size: 0.9rem;
+}
+
+#helpSection h5 {
+    margin-top: 1rem;
+    color: #343a40;
+}
+
+#helpSection .accordion-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+#helpSection .accordion-body {
+    padding: 1rem;
+    font-size: 0.85rem;
+}
+
+/* Alert styles */
+.alert {
+    border-radius: 0.25rem;
+}
+
+.alert-info {
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+    color: #31708f;
+}
+
+.alert-warning {
+    background-color: #fcf8e3;
+    border-color: #faebcc;
+    color: #8a6d3b;
+}
+
+/* Modal styles */
+.modal-header {
+    background-color: #343a40;
+    color: white;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .container {
         padding: 15px;
+    }
+    
+    #helpSection .card-body {
+        padding: 1rem;
     }
 } 

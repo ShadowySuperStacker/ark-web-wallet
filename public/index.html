@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ark Wallet</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,6 +14,85 @@
             <div class="col-md-12 text-center mb-4">
                 <h1>Ark Wallet</h1>
                 <p class="text-muted">A simple web interface for the Ark Protocol on Signet</p>
+                <button class="btn btn-sm btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#helpSection" aria-expanded="false" aria-controls="helpSection">
+                    <i class="bi bi-question-circle"></i> How Ark Works
+                </button>
+            </div>
+        </div>
+
+        <!-- Help Section (Collapsible) -->
+        <div class="collapse mb-4" id="helpSection">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    Understanding the Ark Protocol
+                </div>
+                <div class="card-body">
+                    <h5>What is Ark?</h5>
+                    <p><strong>Important:</strong> Ark is a very new Bitcoin Layer 2 protocol. This wallet helps you use Ark without needing to know all the technical details.</p>
+                    <p>Ark enables payments without having to create channels first.</p>
+                    
+                    <h5>Key Concepts</h5>
+                    <p class="text-muted mb-2">The wallet will guide you through what actions to take.</p>
+                    <ul>
+                        <li><strong>VTXOs (Virtual Transaction Outputs)</strong>: Similar to Bitcoin's UTXOs, but they exist off-chain until needed on-chain.</li>
+                        <li><strong>Rounds</strong>: Collaborative processes where users can refresh their VTXOs.</li>
+                        <li><strong>Expiry Height</strong>: The block height at which a VTXO expires. The closer a VTXO gets to its expiry, the more important it is to refresh it.</li>
+                        <li><strong>Refresh</strong>: The process of extending a VTXO's lifetime and possibly changing its type (e.g., from "arkoor" to "round").</li>
+                    </ul>
+                    
+                    <hr>
+                    <p>
+                        <a class="btn btn-sm btn-outline-info w-100" data-bs-toggle="collapse" href="#collapseReceiving" role="button" aria-expanded="false" aria-controls="collapseReceiving">
+                            Receiving Funds
+                        </a>
+                    </p>
+                    <div class="collapse" id="collapseReceiving">
+                        <div class="card card-body">
+                            <p>To receive funds:</p>
+                            <ol>
+                                <li>Go to the "Receive" section</li>
+                                <li>Copy your VTXO pubkey</li>
+                                <li>Share this pubkey with the sender</li>
+                            </ol>
+                            <p>After receiving funds, they'll appear as "arkoor" type VTXOs. You can refresh them in a round.</p>
+                        </div>
+                    </div>
+                    
+                    <p class="mt-2">
+                        <a class="btn btn-sm btn-outline-info w-100" data-bs-toggle="collapse" href="#collapseSending" role="button" aria-expanded="false" aria-controls="collapseSending">
+                            Sending Payments
+                        </a>
+                    </p>
+                    <div class="collapse" id="collapseSending">
+                        <div class="card card-body">
+                            <p>To send a payment:</p>
+                            <ol>
+                                <li>Go to the "Send" section</li>
+                                <li>Enter the recipient's VTXO pubkey</li>
+                                <li>Enter the amount in sats</li>
+                                <li>Click "Send Payment"</li>
+                            </ol>
+                            <p>After sending, you might receive change as a new VTXO. You can refresh this in a round.</p>
+                        </div>
+                    </div>
+                    
+                    <p class="mt-2">
+                        <a class="btn btn-sm btn-outline-info w-100" data-bs-toggle="collapse" href="#collapseRefreshing" role="button" aria-expanded="false" aria-controls="collapseRefreshing">
+                            Refreshing VTXOs
+                        </a>
+                    </p>
+                    <div class="collapse" id="collapseRefreshing">
+                        <div class="card card-body">
+                            <p>Refreshing VTXOs in a round provides several benefits:</p>
+                            <ul>
+                                <li>Changes the type of the VTXO (e.g., from "arkoor" to "round")</li>
+                                <li>Extends the expiry time of your VTXOs</li>
+                                <li>Consolidates multiple VTXOs into one</li>
+                            </ul>
+                            <p><strong>Important</strong>: You should refresh your VTXOs before they reach their expiry height. Expired VTXOs cannot be used for spending.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -39,6 +119,9 @@
                             <button id="copy-pubkey" class="btn btn-outline-secondary">Copy</button>
                         </div>
                         <p>You can get free signet sats via <a href="https://signet.2nd.dev" target="_blank">the faucet</a></p>
+                        <div class="alert alert-info small" role="alert">
+                            <i class="bi bi-info-circle"></i> <strong>Tip:</strong> After receiving funds, they'll be of type "arkoor". You can refresh them in a round.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -64,6 +147,9 @@
                             </div>
                             <button type="submit" class="btn btn-primary">Pay</button>
                         </form>
+                        <div class="alert alert-info small mt-3" role="alert">
+                            <i class="bi bi-info-circle"></i> <strong>Tip:</strong> After sending a payment, you'll likely receive change as a new VTXO. You can refresh this in a round.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -77,6 +163,9 @@
                         <button id="refresh-vtxos" class="btn btn-sm btn-success">Refresh in Round</button>
                     </div>
                     <div class="card-body">
+                        <div class="alert alert-warning small mb-3" role="alert" id="vtxo-refresh-alert" style="display: none;">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Action needed:</strong> You have VTXOs that should be refreshed. Just click the "Refresh in Round" button above to handle this automatically.
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -84,13 +173,23 @@
                                         <th>ID</th>
                                         <th>Amount (sats)</th>
                                         <th>Type</th>
-                                        <th>Expiry Height</th>
+                                        <th>Expiry (Height & Est. Time)</th>
                                     </tr>
                                 </thead>
                                 <tbody id="vtxos-list">
                                     <!-- VTXO items will be added here -->
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="alert alert-info small mt-3" role="alert">
+                            <i class="bi bi-info-circle"></i> <strong>About VTXOs:</strong> 
+                            <p class="mb-1">Since Ark is a new protocol, these terms might be unfamiliar. Here's what they mean:</p>
+                            <ul class="mb-0">
+                                <li><strong>Type "arkoor"</strong>: Created outside rounds</li>
+                                <li><strong>Type "round"</strong>: Created in rounds</li>
+                                <li><strong>Type "bolt11change"</strong>: Change from a Lightning payment</li>
+                            </ul>
+                            <p class="mt-2 mb-0">Refreshing combines your VTXOs and extends their expiry time.</p>
                         </div>
                     </div>
                 </div>
@@ -106,6 +205,25 @@
                     Message here
                 </div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Guidance Modal -->
+    <div class="modal fade" id="actionGuidanceModal" tabindex="-1" aria-labelledby="actionGuidanceModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="actionGuidanceModalLabel">Recommended Next Steps</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="actionGuidanceModalBody">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="actionGuidanceButton">Take Action</button>
+                </div>
             </div>
         </div>
     </div>
