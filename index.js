@@ -297,18 +297,8 @@ app.post('/api/refresh', async (req, res) => {
 // Endpoint to refresh VTXOs in a round
 app.post('/api/refresh-vtxos', async (req, res) => {
   try {
-    const output = await executeBark('refresh');
+    const output = await executeBark('refresh', ['--all']);
     console.log('Refresh output:', output);
-    
-    // Controleer of de uitvoer de waarschuwing bevat dat er geen VTXOs zijn om te verversen
-    if (output.includes('no VTXO to refresh') || output.includes('There is no VTXO to refresh')) {
-      return res.status(400).json({ 
-        error: 'No VTXOs to refresh', 
-        message: 'There are no VTXOs that need to be refreshed at this time.',
-        details: output
-      });
-    }
-    
     res.json({ success: true, message: 'VTXOs refreshed successfully' });
   } catch (error) {
     console.error('Error refreshing VTXOs:', error);
