@@ -14,16 +14,39 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Path to the bark executable - pointing to the root directory
-const barkPath = './bark';
+// Determine the correct path to bark executable for the current environment
+function getBarkPath() {
+  const bark = process.platform === 'win32' ? 'bark.exe' : 'bark';
+  
+  // First check if bark is in the current directory
+  const localPath = path.join(__dirname, bark);
+  if (fs.existsSync(localPath)) {
+    return localPath;
+  }
+  
+  // If not found, use the system-wide 'bark' assuming it's in the PATH
+  return bark;
+}
 
 // Helper function to execute bark commands
-function executeBark(command) {
+function executeBark(command, args = []) {
   return new Promise((resolve, reject) => {
-    exec(`${barkPath} ${command}`, (error, stdout, stderr) => {
+    const barkPath = getBarkPath();
+    const fullCmd = [barkPath, command, ...args].join(' ');
+    
+    console.log(`Executing: ${fullCmd}`);
+    
+    exec(fullCmd, (error, stdout, stderr) => {
       if (error) {
-        return reject(error);
+        console.error(`Error executing '${fullCmd}':`, error);
+        console.error(`stderr: ${stderr}`);
+        reject(new Error(stderr || error.message));
+        return;
       }
+      
+      console.log(`stdout: ${stdout}`);
+      if (stderr) console.log(`stderr: ${stderr}`);
+      
       resolve(stdout);
     });
   });
@@ -31,10 +54,14 @@ function executeBark(command) {
 
 // Helper function to check if a wallet exists
 function checkWalletExists() {
-  // Ark stores wallet data in ~/.bark directory
-  const homedir = require('os').homedir();
-  const barkDir = path.join(homedir, '.bark');
-  return fs.existsSync(barkDir);
+  try {
+    const barkPath = getBarkPath();
+    // Execute a simple command to check if wallet exists
+    exec(`${barkPath} vtxo-pubkey`, { encoding: 'utf8', timeout: 5000 });
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 // Initialize wallet if it doesn't exist
@@ -44,7 +71,7 @@ function initializeWallet(callback) {
   // Use the esplora server specified in the documentation
   const esploraUrl = "esplora.signet.2nd.dev";
   
-  exec(`${barkPath} create --signet --asp=${aspServer} --esplora=${esploraUrl}`, (error, stdout, stderr) => {
+  exec(`${getBarkPath()} create --signet --asp=${aspServer} --esplora=${esploraUrl}`, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error initializing wallet: ${error.message}`);
       console.error(`Stderr: ${stderr}`);
@@ -78,55 +105,82 @@ function checkServerPrerequisites(callback) {
 // Helper function to delete wallet
 function deleteWallet() {
   return new Promise((resolve, reject) => {
-    const homedir = require('os').homedir();
-    const barkDir = path.join(homedir, '.bark');
+    const dataDir = process.env.BARK_DATA_DIR || path.join(process.env.HOME || process.env.USERPROFILE, '.bark');
     
-    if (fs.existsSync(barkDir)) {
-      // Use rimraf or fs.rm with recursive option to delete directory
-      try {
-        // For Node.js >= 14.14.0
-        if (fs.rmSync) {
-          fs.rmSync(barkDir, { recursive: true, force: true });
-        } else {
-          // For older Node.js versions
-          const rimraf = require('rimraf');
-          rimraf.sync(barkDir);
-        }
-        console.log('Wallet deleted successfully.');
-        resolve(true);
-      } catch (error) {
-        console.error('Error deleting wallet:', error);
-        reject(error);
-      }
+    // Delete the wallet directory
+    if (fs.existsSync(dataDir)) {
+      console.log(`Deleting wallet directory: ${dataDir}`);
+      fs.rmdirSync(dataDir, { recursive: true });
+      console.log('Wallet directory deleted successfully');
+      resolve(true);
     } else {
-      console.log('No wallet to delete.');
+      console.log('Wallet directory not found');
       resolve(false);
     }
   });
+}
+
+// Helper function to get the current block height
+async function getCurrentBlockHeight() {
+  try {
+    // Gebruik het 'sync' commando om de meest recente blokhoogte te krijgen
+    const output = await executeBark('sync');
+    const heightMatch = output.match(/Current block height: (\d+)/);
+    if (heightMatch) {
+      return parseInt(heightMatch[1]);
+    }
+    return 0;
+  } catch (error) {
+    console.error('Error getting current block height:', error);
+    return 0;
+  }
 }
 
 // API Endpoints
 app.get('/api/balance', async (req, res) => {
   try {
     const output = await executeBark('balance');
-    // Extract the JSON part from the output
-    const jsonMatch = output.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const balanceJson = JSON.parse(jsonMatch[0]);
-      res.json(balanceJson);
-    } else {
-      res.status(500).json({ error: 'Failed to parse balance output' });
+    
+    // Try to parse the JSON directly first
+    try {
+      // Look for JSON object in the output
+      const jsonMatch = output.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const balanceData = JSON.parse(jsonMatch[0]);
+        res.json({
+          total: balanceData.offchain_sat + balanceData.onchain_sat + (balanceData.pending_exit_sat || 0),
+          offchain_sat: balanceData.offchain_sat || 0,
+          onchain_sat: balanceData.onchain_sat || 0,
+          pending_exit_sat: balanceData.pending_exit_sat || 0
+        });
+        return;
+      }
+    } catch (jsonError) {
+      console.log('Could not parse JSON directly, falling back to regex parsing');
     }
+    
+    // Fallback to regex parsing if JSON parsing fails
+    const totalMatch = output.match(/Total:\s+([\d,]+)/);
+    const offchainMatch = output.match(/Offchain:\s+([\d,]+)/);
+    const onchainMatch = output.match(/Onchain:\s+([\d,]+)/);
+    const pendingMatch = output.match(/Pending exit:\s+([\d,]+)/);
+    
+    const offchain_sat = offchainMatch ? parseInt(offchainMatch[1].replace(/,/g, '')) : 0;
+    const onchain_sat = onchainMatch ? parseInt(onchainMatch[1].replace(/,/g, '')) : 0;
+    const pending_exit_sat = pendingMatch ? parseInt(pendingMatch[1].replace(/,/g, '')) : 0;
+    const total = offchain_sat + onchain_sat + pending_exit_sat;
+    
+    res.json({ total, offchain_sat, onchain_sat, pending_exit_sat });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error getting balance:', error);
+    res.status(500).json({ error: 'Failed to get balance', details: error.message });
   }
 });
 
 app.get('/api/vtxo-pubkey', async (req, res) => {
   try {
     const output = await executeBark('vtxo-pubkey');
-    const pubkey = output.trim().split('\n').pop();
-    res.json({ pubkey });
+    res.json({ pubkey: output.trim() });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -134,17 +188,51 @@ app.get('/api/vtxo-pubkey', async (req, res) => {
 
 app.get('/api/vtxos', async (req, res) => {
   try {
+    // Eerst de huidige blokhoogte ophalen
+    const currentHeight = await getCurrentBlockHeight();
+    
     const output = await executeBark('vtxos');
-    // Extract the JSON array part from the output
-    const jsonMatch = output.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      const vtxosJson = JSON.parse(jsonMatch[0]);
-      res.json(vtxosJson);
-    } else {
-      res.status(500).json({ error: 'Failed to parse VTXOs output' });
+    
+    // Try to parse JSON directly first
+    try {
+      // Look for JSON array in the output
+      const jsonMatch = output.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const vtxosData = JSON.parse(jsonMatch[0]);
+        
+        // Map to our expected format
+        const vtxos = vtxosData.map(vtxo => ({
+          id: vtxo.id,
+          amount: vtxo.amount_sat,
+          type: vtxo.vtxo_type,
+          expiry: vtxo.expiry_height
+        }));
+        
+        res.json({ current_height: currentHeight, vtxos });
+        return;
+      }
+    } catch (jsonError) {
+      console.log('Could not parse VTXO JSON directly, falling back to regex parsing:', jsonError);
     }
+    
+    // Fallback to regex parsing if JSON parsing fails
+    const vtxos = [];
+    const vtxoRegex = /VTXO (\w+(?:-\w+)*), amount: ([\d,]+), type: (\w+), expiry(?:_height)?: (\d+)/g;
+    
+    let match;
+    while ((match = vtxoRegex.exec(output)) !== null) {
+      vtxos.push({
+        id: match[1],
+        amount: parseInt(match[2].replace(/,/g, '')),
+        type: match[3],
+        expiry: parseInt(match[4])
+      });
+    }
+    
+    res.json({ current_height: currentHeight, vtxos });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error getting VTXOs:', error);
+    res.status(500).json({ error: 'Failed to get VTXOs', details: error.message });
   }
 });
 
@@ -157,88 +245,110 @@ app.post('/api/refresh', async (req, res) => {
   }
 });
 
-// Send payment endpoint
-app.post('/api/send', (req, res) => {
-  // Zorg ervoor dat we hier zowel 'recipient' als oudere 'destination' parameter ondersteunen
-  const recipient = req.body.recipient || req.body.destination;
-  const { amount } = req.body;
-  
-  if (!recipient) {
-    return res.status(400).json({ error: 'Recipient is required' });
+// Endpoint to refresh VTXOs in a round
+app.post('/api/refresh-vtxos', async (req, res) => {
+  try {
+    const output = await executeBark('refresh');
+    console.log('Refresh output:', output);
+    res.json({ success: true, message: 'VTXOs refreshed successfully' });
+  } catch (error) {
+    console.error('Error refreshing VTXOs:', error);
+    res.status(500).json({ error: 'Failed to refresh VTXOs', details: error.message });
   }
-  
-  // Determine the type of payment
-  let command = '';
-  
-  if (recipient.startsWith('ln')) {
-    // Lightning invoice - amount is included in the invoice
-    command = `send ${recipient}`;
-  } else {
-    // For VTXO pubkey or Bitcoin address, amount is required
-    if (!amount) {
-      return res.status(400).json({ error: 'Amount is required for VTXO pubkey or Bitcoin address payments' });
-    }
-    
-    // Add 'sat' to the amount if it's a number
-    const formattedAmount = amount && !isNaN(amount) ? `${amount} sat` : amount;
-    
-    if (recipient.startsWith('bc1') || recipient.startsWith('tb1') || recipient.startsWith('2') || recipient.startsWith('m') || recipient.startsWith('n')) {
-      // Bitcoin address
-      command = `send-onchain ${recipient} ${formattedAmount}`;
-    } else {
-      // Assume VTXO pubkey
-      command = `send ${recipient} ${formattedAmount}`;
-    }
-  }
-  
-  // Execute the bark command
-  exec(`${barkPath} ${command}`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error: ${error.message}`);
-      return res.status(500).json({ error: 'Failed to send payment', details: error.message });
-    }
-    
-    // Check stderr for success or error messages
-    // bark seems to output its logs to stderr even on success
-    if (stderr) {
-      console.log(`Stderr output: ${stderr}`);
-      
-      // Check if the payment was actually successful despite being in stderr
-      // Use more lenient checks to account for ANSI color codes
-      if (stderr.includes('Payment sent') || 
-          stderr.includes('Bolt11 payment succeeded') ||
-          stderr.includes('Payment preimage received') ||
-          stderr.includes('Adding change VTXO')) {
-        console.log('Payment successful based on stderr output');
-        return res.json({ success: true, message: 'Payment sent successfully', details: stderr });
-      }
-      
-      // Check for actual error messages
-      if (stderr.includes('ERROR') || stderr.includes('Failed') || stderr.includes('error')) {
-        console.error(`Stderr indicates error: ${stderr}`);
-        return res.status(500).json({ error: 'Failed to send payment', details: stderr });
-      }
-    }
-    
-    // If we reach here, assume success based on stdout or non-error stderr
-    console.log(`Payment appears successful: ${stdout}`);
-    return res.json({ success: true, message: 'Payment sent successfully' });
-  });
 });
 
-// New endpoint to initialize or check wallet status
-app.get('/api/wallet-status', (req, res) => {
-  const walletExists = checkWalletExists();
-  if (walletExists) {
-    res.json({ status: 'ready', message: 'Wallet is ready to use.' });
-  } else {
-    initializeWallet((success) => {
-      if (success) {
-        res.json({ status: 'initialized', message: 'Wallet was initialized successfully.' });
+// Send payment to a recipient
+app.post('/api/send', async (req, res) => {
+  try {
+    // Zorg ervoor dat we hier zowel 'recipient' als oudere 'destination' parameter ondersteunen
+    const recipient = req.body.recipient || req.body.destination;
+    const { amount, comment } = req.body;
+    
+    if (!recipient) {
+      return res.status(400).json({ error: 'Recipient is required' });
+    }
+    
+    // Build the command with arguments
+    let args = [`${recipient}`];
+    
+    // If it's a Lightning invoice, we don't need to specify amount
+    const isLightningInvoice = recipient.toLowerCase().startsWith('lnbc');
+    
+    if (!isLightningInvoice && !amount) {
+      return res.status(400).json({ error: 'Amount is required for non-Lightning invoice payments' });
+    }
+    
+    if (amount) {
+      args.push(`${amount}sat`);
+    }
+    
+    if (comment) {
+      args.push(`-c "${comment}"`);
+    }
+    
+    try {
+      const output = await executeBark('send', args);
+      console.log('Payment output:', output);
+      
+      res.json({ 
+        success: true, 
+        message: 'Payment sent successfully',
+        details: output
+      });
+    } catch (error) {
+      // Check if the error message actually indicates success
+      // (bark sometimes returns error code even though payment succeeds)
+      const errorMsg = error.message || '';
+      
+      if (
+        errorMsg.includes('Payment sent') || 
+        errorMsg.includes('Bolt11 payment succeeded') || 
+        errorMsg.includes('Payment preimage received') ||
+        errorMsg.includes('Adding change VTXO')
+      ) {
+        console.log('Payment sent successfully despite error code');
+        res.json({ 
+          success: true, 
+          message: 'Payment sent successfully',
+          details: errorMsg
+        });
       } else {
-        res.status(500).json({ status: 'error', message: 'Failed to initialize wallet.' });
+        throw error; // Re-throw the error for the outer catch to handle
       }
-    });
+    }
+  } catch (error) {
+    console.error('Error sending payment:', error);
+    res.status(500).json({ error: 'Failed to send payment', details: error.message });
+  }
+});
+
+// Check wallet status
+app.get('/api/wallet-status', async (req, res) => {
+  try {
+    // Try to access vtxo-pubkey to check if wallet exists
+    try {
+      await executeBark('vtxo-pubkey');
+      res.json({ initialized: true });
+    } catch (error) {
+      // If there's an error, assume the wallet doesn't exist yet
+      res.json({ initialized: false });
+    }
+  } catch (error) {
+    console.error('Error checking wallet status:', error);
+    res.status(500).json({ error: 'Failed to check wallet status', details: error.message });
+  }
+});
+
+// Initialize wallet
+app.post('/api/init-wallet', async (req, res) => {
+  try {
+    // It's often better to use init with -s (signet flag) for testing
+    const output = await executeBark('init', ['-s']);
+    console.log('Init output:', output);
+    res.json({ success: true, message: 'Wallet initialized successfully' });
+  } catch (error) {
+    console.error('Error initializing wallet:', error);
+    res.status(500).json({ error: 'Failed to initialize wallet', details: error.message });
   }
 });
 
