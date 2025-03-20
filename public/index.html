@@ -157,21 +157,21 @@
                     <div class="card-body">
                         <form id="payment-form">
                             <div class="mb-3">
-                                <label for="destination" class="form-label">Destination</label>
-                                <input type="text" class="form-control" id="destination" placeholder="Lightning invoice, LNURL, Bitcoin address or VTXO pubkey">
+                                <label for="recipient" class="form-label">Recipient (VTXO pubkey, Lightning invoice, or Bitcoin address)</label>
+                                <input type="text" class="form-control" id="recipient" placeholder="Enter recipient..." required>
                             </div>
                             <div class="mb-3">
-                                <label for="amount" class="form-label">Amount (satoshis)</label>
+                                <label for="amount" class="form-label">Amount (sats)</label>
                                 <input type="number" class="form-control" id="amount" placeholder="Optional for Lightning invoices">
+                                <div class="form-text">Only required for VTXO pubkey or Bitcoin address payments. For Lightning invoices, the amount is already included.</div>
                             </div>
-                            <div class="mb-3">
-                                <label for="comment" class="form-label">Comment</label>
-                                <input type="text" class="form-control" id="comment" placeholder="Optional">
-                            </div>
-                            <button type="submit" class="btn btn-primary">Pay</button>
+                            <button type="submit" class="btn btn-primary">Send Payment</button>
                         </form>
                         <div class="alert alert-info small mt-3" role="alert">
                             <i class="bi bi-info-circle"></i> <strong>Tip:</strong> After sending a payment, you'll likely receive change as a new VTXO. You can refresh this in a round.
+                        </div>
+                        <div class="alert alert-success small mt-3" role="alert">
+                            <i class="bi bi-shop"></i> <strong>Try it out:</strong> Visit the <a href="https://signet.2nd.dev/store" target="_blank" class="alert-link">Ark Test Store</a> to test your payments by buying treats for Byte, the Second mascot!
                         </div>
                     </div>
                 </div>

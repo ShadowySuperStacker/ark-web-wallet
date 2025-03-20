@@ -223,27 +223,42 @@ async function refreshVtxos() {
     }
 }
 
-async function sendPayment(destination, amount, comment) {
+// Send a payment
+async function sendPayment(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('payment-form');
+    const recipient = document.getElementById('recipient').value.trim();
+    const amount = document.getElementById('amount').value.trim();
+    
+    if (!recipient) {
+        showToast('Please enter a recipient', 'warning');
+        return;
+    }
+    
+    // Check if it's a Lightning invoice and verify we have amount if needed
+    const isLightningInvoice = recipient.startsWith('ln');
+    
+    if (!isLightningInvoice && !amount) {
+        showToast('Amount is required for non-Lightning payments', 'warning');
+        return;
+    }
+    
     try {
+        showToast('Processing payment...', 'info');
+        
         const response = await fetch('/api/send', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                destination,
-                amount,
-                comment
-            })
+            body: JSON.stringify({ recipient, amount })
         });
         
-        const result = await response.json();
+        const data = await response.json();
         
         if (response.ok) {
-            showToast('Payment sent successfully!', 'success');
-            // Refresh balance after sending payment
-            await fetchBalance();
-            await fetchVtxos();
+            showToast('Payment sent successfully', 'success');
             
             // Show guidance modal
             showGuidanceModal(
@@ -261,14 +276,18 @@ async function sendPayment(destination, amount, comment) {
                 refreshVtxos
             );
             
-            return true;
+            // Clear the form
+            form.reset();
+            
+            // Refresh the data
+            fetchBalance();
+            fetchVtxos();
         } else {
-            throw new Error(result.error || 'Failed to send payment');
+            throw new Error(data.error || 'Failed to send payment');
         }
     } catch (error) {
         console.error('Error sending payment:', error);
-        showToast(`Error sending payment: ${error.message}`, 'danger');
-        return false;
+        showToast(`Error: ${error.message}`, 'danger');
     }
 }
 
@@ -352,27 +371,8 @@ copyPubkeyBtn.addEventListener('click', () => {
     showToast('VTXO pubkey copied to clipboard', 'success');
 });
 
-paymentForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const destination = document.getElementById('destination').value.trim();
-    const amount = document.getElementById('amount').value.trim();
-    const comment = document.getElementById('comment').value.trim();
-    
-    if (!destination) {
-        showToast('Please enter a destination', 'warning');
-        return;
-    }
-    
-    showToast('Processing payment...', 'info');
-    
-    const success = await sendPayment(destination, amount, comment);
-    
-    if (success) {
-        // Reset the form
-        paymentForm.reset();
-    }
-});
+// Payment form submission
+document.getElementById('payment-form').addEventListener('submit', sendPayment);
 
 // Delete wallet button
 deleteWalletBtn.addEventListener('click', () => {

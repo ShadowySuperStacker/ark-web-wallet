@@ -70,7 +70,10 @@ This interface provides a simplified way to:
 - Receive funds via your VTXO pubkey
 - Manage and view your VTXOs
 - Refresh VTXOs in rounds
-- Send payments to various destinations
+- Send payments to various destinations:
+  - Other Ark users (via VTXO pubkey)
+  - Lightning invoices (e.g., from the [Ark Test Store](https://signet.2nd.dev/store))
+  - Bitcoin addresses (on-chain)
 - Reset your Ark wallet if needed
 
 All operations are performed by executing the corresponding `bark` commands in the background.
@@ -88,6 +91,12 @@ All operations are performed by executing the corresponding `bark` commands in t
    - Send funds to other VTXO pubkeys
    - Test Lightning payments through the Ark protocol
 
+4. **Test payments in the store**:
+   - Visit the [Ark Test Store](https://signet.2nd.dev/store)
+   - Order a treat for "Byte" (the Second mascot)
+   - Pay using the Ark protocol
+   - This is a great way to test the full payment flow in a real-world scenario
+
 ## Ark Protocol Facts
 
 - **VTXO**: Virtual Transaction Output - the basic unit in Ark, similar to UTXOs in Bitcoin
@@ -101,8 +110,8 @@ All operations are performed by executing the corresponding `bark` commands in t
 ## Resources
 
 - [Official Ark Documentation](https://docs.second.tech/getting-started/)
-- [Signet Faucet](https://signet.2nd.dev/)
-- [Test Store](https://signet.2nd.dev/store)
+- [Signet Faucet](https://signet.2nd.dev/) - Get free test sats
+- [Ark Test Store](https://signet.2nd.dev/store) - Test your Ark payments by buying treats for Byte
 
 ## Summary
 

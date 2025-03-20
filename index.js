@@ -157,24 +157,73 @@ app.post('/api/refresh', async (req, res) => {
   }
 });
 
-app.post('/api/send', async (req, res) => {
-  try {
-    const { destination, amount, comment } = req.body;
-    if (!destination) {
-      return res.status(400).json({ error: 'Destination is required' });
-    }
-
-    let command = `send ${destination}`;
-    
-    // Add 'sat' denomination to amount if provided
-    if (amount) command += ` ${amount}sat`;
-    if (comment) command += ` "${comment}"`;
-
-    const output = await executeBark(command);
-    res.json({ success: true, message: 'Payment sent successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// Send payment endpoint
+app.post('/api/send', (req, res) => {
+  // Zorg ervoor dat we hier zowel 'recipient' als oudere 'destination' parameter ondersteunen
+  const recipient = req.body.recipient || req.body.destination;
+  const { amount } = req.body;
+  
+  if (!recipient) {
+    return res.status(400).json({ error: 'Recipient is required' });
   }
+  
+  // Determine the type of payment
+  let command = '';
+  
+  if (recipient.startsWith('ln')) {
+    // Lightning invoice - amount is included in the invoice
+    command = `send ${recipient}`;
+  } else {
+    // For VTXO pubkey or Bitcoin address, amount is required
+    if (!amount) {
+      return res.status(400).json({ error: 'Amount is required for VTXO pubkey or Bitcoin address payments' });
+    }
+    
+    // Add 'sat' to the amount if it's a number
+    const formattedAmount = amount && !isNaN(amount) ? `${amount} sat` : amount;
+    
+    if (recipient.startsWith('bc1') || recipient.startsWith('tb1') || recipient.startsWith('2') || recipient.startsWith('m') || recipient.startsWith('n')) {
+      // Bitcoin address
+      command = `send-onchain ${recipient} ${formattedAmount}`;
+    } else {
+      // Assume VTXO pubkey
+      command = `send ${recipient} ${formattedAmount}`;
+    }
+  }
+  
+  // Execute the bark command
+  exec(`${barkPath} ${command}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error: ${error.message}`);
+      return res.status(500).json({ error: 'Failed to send payment', details: error.message });
+    }
+    
+    // Check stderr for success or error messages
+    // bark seems to output its logs to stderr even on success
+    if (stderr) {
+      console.log(`Stderr output: ${stderr}`);
+      
+      // Check if the payment was actually successful despite being in stderr
+      // Use more lenient checks to account for ANSI color codes
+      if (stderr.includes('Payment sent') || 
+          stderr.includes('Bolt11 payment succeeded') ||
+          stderr.includes('Payment preimage received') ||
+          stderr.includes('Adding change VTXO')) {
+        console.log('Payment successful based on stderr output');
+        return res.json({ success: true, message: 'Payment sent successfully', details: stderr });
+      }
+      
+      // Check for actual error messages
+      if (stderr.includes('ERROR') || stderr.includes('Failed') || stderr.includes('error')) {
+        console.error(`Stderr indicates error: ${stderr}`);
+        return res.status(500).json({ error: 'Failed to send payment', details: stderr });
+      }
+    }
+    
+    // If we reach here, assume success based on stdout or non-error stderr
+    console.log(`Payment appears successful: ${stdout}`);
+    return res.json({ success: true, message: 'Payment sent successfully' });
+  });
 });
 
 // New endpoint to initialize or check wallet status
