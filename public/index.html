@@ -70,9 +70,6 @@
                     <i class="bi bi-sun-fill dark:hidden"></i>
                     <i class="bi bi-moon-fill hidden dark:inline"></i>
                 </button>
-                <button class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800" id="help-toggle">
-                    <i class="bi bi-question-circle"></i> How Ark Works
-                </button>
                 <button class="px-3 py-1 text-sm text-red-500 border border-red-300 rounded shadow-sm hover:bg-red-50 dark:hover:bg-red-900" id="delete-wallet-btn">
                     <i class="bi bi-trash"></i> Reset Wallet
                 </button>
@@ -87,82 +84,6 @@
             <button type="button" class="float-right" id="close-status-alert">
                 <i class="bi bi-x-lg"></i>
             </button>
-        </div>
-
-        <!-- Help Section -->
-        <div class="hidden mb-6" id="help-section">
-            <div class="card">
-                <div class="card-header text-white bg-ark-orange">
-                    Understanding the Ark Protocol
-                </div>
-                <div class="card-body">
-                    <h5>What is Ark?</h5>
-                    <p><strong>Important:</strong> Ark is a very new Bitcoin Layer 2 protocol. This wallet helps you use Ark without needing to know all the technical details.</p>
-                    <p>Ark enables payments without having to create channels first.</p>
-                    
-                    <h5>Key Concepts</h5>
-                    <p class="text-muted mb-2">The wallet will guide you through what actions to take.</p>
-                    <ul>
-                        <li><strong>VTXOs (Virtual Transaction Outputs)</strong>: Similar to Bitcoin's UTXOs, but they exist off-chain until needed on-chain.</li>
-                        <li><strong>Rounds</strong>: Collaborative processes where users can refresh their VTXOs.</li>
-                        <li><strong>Expiry Height</strong>: The block height at which a VTXO expires. The closer a VTXO gets to its expiry, the more important it is to refresh it.</li>
-                        <li><strong>Refresh</strong>: The process of extending a VTXO's lifetime and possibly changing its type (e.g., from "arkoor" to "round").</li>
-                    </ul>
-                    
-                    <hr>
-                    <p>
-                        <a class="btn btn-sm btn-outline-info w-100" data-bs-toggle="collapse" href="#collapseReceiving" role="button" aria-expanded="false" aria-controls="collapseReceiving">
-                            Receiving Funds
-                        </a>
-                    </p>
-                    <div class="collapse" id="collapseReceiving">
-                        <div class="card card-body">
-                            <p>To receive funds:</p>
-                            <ol>
-                                <li>Go to the "Receive" section</li>
-                                <li>Copy your VTXO pubkey</li>
-                                <li>Share this pubkey with the sender</li>
-                            </ol>
-                            <p>After receiving funds, they'll appear as "arkoor" type VTXOs. You can refresh them in a round.</p>
-                        </div>
-                    </div>
-                    
-                    <p class="mt-2">
-                        <a class="btn btn-sm btn-outline-info w-100" data-bs-toggle="collapse" href="#collapseSending" role="button" aria-expanded="false" aria-controls="collapseSending">
-                            Sending Payments
-                        </a>
-                    </p>
-                    <div class="collapse" id="collapseSending">
-                        <div class="card card-body">
-                            <p>To send a payment:</p>
-                            <ol>
-                                <li>Go to the "Send" section</li>
-                                <li>Enter the recipient's VTXO pubkey</li>
-                                <li>Enter the amount in sats</li>
-                                <li>Click "Send Payment"</li>
-                            </ol>
-                            <p>After sending, you might receive change as a new VTXO. You can refresh this in a round.</p>
-                        </div>
-                    </div>
-                    
-                    <p class="mt-2">
-                        <a class="btn btn-sm btn-outline-info w-100" data-bs-toggle="collapse" href="#collapseRefreshing" role="button" aria-expanded="false" aria-controls="collapseRefreshing">
-                            Refreshing VTXOs
-                        </a>
-                    </p>
-                    <div class="collapse" id="collapseRefreshing">
-                        <div class="card card-body">
-                            <p>Refreshing VTXOs in a round provides several benefits:</p>
-                            <ul>
-                                <li>Changes the type of the VTXO (e.g., from "arkoor" to "round")</li>
-                                <li>Extends the expiry time of your VTXOs</li>
-                                <li>Consolidates multiple VTXOs into one</li>
-                            </ul>
-                            <p><strong>Important</strong>: You should refresh your VTXOs before they reach their expiry height. Expired VTXOs cannot be used for spending.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -275,6 +196,30 @@
                     <li><strong>Type "bolt11change"</strong>: Change from a Lightning payment</li>
                 </ul>
                 <p>Refreshing combines your VTXOs and extends their expiry time.</p>
+            </div>
+        </div>
+
+        <!-- Help Section (moved to bottom) -->
+        <div class="card mt-6 bg-blue-50 dark:bg-blue-900">
+            <div class="card-header text-white bg-ark-orange">
+                Understanding the Ark Protocol
+            </div>
+            <div class="p-4">
+                <h3 class="text-lg font-semibold mb-2">What is Ark?</h3>
+                <p class="mb-3"><strong>Important:</strong> Ark is a very new Bitcoin Layer 2 protocol. This wallet helps you use Ark without needing to know all the technical details.</p>
+                <p class="mb-3">Ark enables payments without having to create channels first.</p>
+                
+                <h3 class="text-lg font-semibold mb-2 mt-4">Key Concepts</h3>
+                <div class="mb-2"><strong>VTXOs (Virtual Transaction Outputs):</strong> Similar to Bitcoin's UTXOs, but they exist off-chain until needed on-chain.</div>
+                <div class="mb-2"><strong>Rounds:</strong> Collaborative processes where users can refresh their VTXOs.</div>
+                <div class="mb-2"><strong>Expiry Height:</strong> The block height at which a VTXO expires. The closer a VTXO gets to its expiry, the more important it is to refresh it.</div>
+                <div class="mb-2"><strong>Refresh:</strong> The process of extending a VTXO's lifetime and possibly changing its type (e.g., from "arkoor" to "round").</div>
+                
+                <h3 class="text-lg font-semibold mb-2 mt-4">Common Actions</h3>
+                <div class="mb-2"><strong>Receiving Funds:</strong> Share your VTXO pubkey with others. For testing, you can get free signet sats from the <a href="https://signet.2nd.dev" target="_blank" class="text-ark-orange hover:underline">Ark faucet</a>.</div>
+                <div class="mb-2"><strong>Sending Payments:</strong> You can send payments to other Ark users (via VTXO pubkey), to Lightning invoices, or to Bitcoin addresses.</div>
+                <div class="mb-2"><strong>Refreshing VTXOs:</strong> If your VTXOs are nearing expiry or you want to consolidate multiple VTXOs, use the "Refresh in Round" button.</div>
+                <div class="mb-2"><strong>Testing Your Wallet:</strong> Try buying something from the <a href="https://signet.2nd.dev/store" target="_blank" class="text-ark-orange hover:underline">Ark Test Store</a>!</div>
             </div>
         </div>
     </div>

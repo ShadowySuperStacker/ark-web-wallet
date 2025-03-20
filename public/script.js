@@ -10,8 +10,6 @@ const refreshVtxosBtn = document.getElementById('refresh-vtxos-btn');
 const refreshBalanceBtn = document.getElementById('refresh-balance-btn');
 const copyPubkeyBtn = document.getElementById('copy-pubkey-btn');
 const paymentForm = document.getElementById('payment-form');
-const helpToggle = document.getElementById('help-toggle');
-const helpSection = document.getElementById('help-section');
 const actionGuidanceModal = document.getElementById('actionGuidanceModal');
 const actionGuidanceModalTitle = document.getElementById('actionGuidanceModalTitle');
 const actionGuidanceModalBody = document.getElementById('actionGuidanceModalBody');
@@ -58,11 +56,6 @@ themeToggle.addEventListener('click', () => {
 // Status alert handling
 closeStatusAlert.addEventListener('click', () => {
     walletStatusAlert.classList.add('hidden');
-});
-
-// Help toggle
-helpToggle.addEventListener('click', () => {
-    helpSection.classList.toggle('hidden');
 });
 
 // Toast notification
