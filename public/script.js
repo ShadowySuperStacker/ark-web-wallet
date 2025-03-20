@@ -221,12 +221,17 @@ async function fetchVtxos() {
             const minutesToExpiry = blocksRemaining * 10;
             let expiryTimeDisplay = '';
             
+            // Calculate expiry date
+            const expiryDate = new Date();
+            expiryDate.setMinutes(expiryDate.getMinutes() + minutesToExpiry);
+            const expiryDateStr = expiryDate.toLocaleString();
+            
             if (minutesToExpiry < 60) {
-                expiryTimeDisplay = `~${minutesToExpiry} minutes`;
+                expiryTimeDisplay = `~${minutesToExpiry} minutes (${expiryDateStr})`;
             } else if (minutesToExpiry < 1440) {
-                expiryTimeDisplay = `~${Math.round(minutesToExpiry / 60)} hours`;
+                expiryTimeDisplay = `~${Math.round(minutesToExpiry / 60)} hours (${expiryDateStr})`;
             } else {
-                expiryTimeDisplay = `~${Math.round(minutesToExpiry / 1440)} days`;
+                expiryTimeDisplay = `~${Math.round(minutesToExpiry / 1440)} days (${expiryDateStr})`;
             }
             
             // Format the ID for better display
