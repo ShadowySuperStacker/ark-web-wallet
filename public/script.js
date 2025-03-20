@@ -490,7 +490,20 @@ async function sendPayment() {
             return;
         }
         
-        showToast('Sending payment... This may take a moment.', 'info');
+        // Controleer of er al een "Sending payment..." toast zichtbaar is
+        const existingToasts = document.querySelectorAll('#toast-container div');
+        let paymentToastExists = false;
+        
+        existingToasts.forEach(toast => {
+            if (toast.textContent.includes('Sending payment...')) {
+                paymentToastExists = true;
+            }
+        });
+        
+        // Alleen een nieuwe toast tonen als er nog geen is
+        if (!paymentToastExists) {
+            showToast('Sending payment... This may take a moment.', 'info');
+        }
         
         try {
             const response = await fetch('/api/send', {
@@ -597,6 +610,14 @@ async function sendPayment() {
         // Clear the form
         document.getElementById('recipient').value = '';
         document.getElementById('amount').value = '';
+        
+        // Verwijder eventuele bestaande "Sending payment..." toasts
+        const existingToasts = document.querySelectorAll('#toast-container div');
+        existingToasts.forEach(toast => {
+            if (toast.textContent.includes('Sending payment...')) {
+                toast.remove();
+            }
+        });
         
         // Show success message
         showToast('Payment sent successfully!', 'success');
