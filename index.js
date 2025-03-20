@@ -423,7 +423,8 @@ app.post('/api/board', async (req, res) => {
     const args = [];
     
     if (amount) {
-      args.push(`"${amount}"`);
+      // Zorg ervoor dat het bedrag de 'sat' eenheid heeft
+      args.push(`${amount}sat`);
     } else {
       args.push('--all');
     }
