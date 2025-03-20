@@ -695,6 +695,13 @@ async function exitFunds() {
                     
                     const data = await response.json();
                     
+                    // Refresh balances and VTXO list after successful exit
+                    await Promise.all([
+                        fetchBalance(),
+                        fetchVtxos(),
+                        fetchOnchainBalance()
+                    ]);
+                    
                     // Show success message
                     showToast('Exit process started successfully!', 'success');
                     
