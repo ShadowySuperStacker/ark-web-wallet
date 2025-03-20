@@ -123,12 +123,61 @@ function deleteWallet() {
 // Helper function to get the current block height
 async function getCurrentBlockHeight() {
   try {
-    // Gebruik het 'sync' commando om de meest recente blokhoogte te krijgen
-    const output = await executeBark('sync');
-    const heightMatch = output.match(/Current block height: (\d+)/);
-    if (heightMatch) {
-      return parseInt(heightMatch[1]);
+    // Probeer de huidige blokhoogte via een andere methode te verkrijgen
+    // We kunnen de status verkrijgen via het 'status' commando (als het bestaat)
+    // of via het 'vtxos' commando en de expiry heights analyseren
+    try {
+      const output = await executeBark('status');
+      const heightMatch = output.match(/Current block height:\s*(\d+)/i);
+      if (heightMatch) {
+        return parseInt(heightMatch[1]);
+      }
+    } catch (statusError) {
+      console.log('Status command failed, trying another approach');
     }
+    
+    // Als het status commando niet werkt, probeer dan de expiry heights van VTXOs te gebruiken
+    // om een schatting te maken van de huidige blokhoogte
+    const vtxosOutput = await executeBark('vtxos');
+    
+    try {
+      // Try to parse JSON output first
+      const jsonMatch = vtxosOutput.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const vtxosData = JSON.parse(jsonMatch[0]);
+        
+        // If we have VTXOs, we can estimate the current height
+        // Most VTXOs expire ~144 blocks (1 day) from creation, so we can use that as a heuristic
+        if (vtxosData && vtxosData.length > 0) {
+          const expiryHeights = vtxosData.map(vtxo => vtxo.expiry_height);
+          const minExpiry = Math.min(...expiryHeights);
+          
+          // Assuming standard expiry is ~144 blocks away
+          const estimatedHeight = minExpiry - 144;
+          return Math.max(0, estimatedHeight);
+        }
+      }
+    } catch (jsonError) {
+      console.log('Could not parse VTXO JSON, trying regex parsing');
+    }
+    
+    // Fallback to regex parsing if JSON fails
+    const expiryRegex = /expiry(?:_height)?:\s*(\d+)/g;
+    const expiryHeights = [];
+    let match;
+    
+    while ((match = expiryRegex.exec(vtxosOutput)) !== null) {
+      expiryHeights.push(parseInt(match[1]));
+    }
+    
+    if (expiryHeights.length > 0) {
+      const minExpiry = Math.min(...expiryHeights);
+      // Assuming standard expiry is ~144 blocks away
+      const estimatedHeight = minExpiry - 144;
+      return Math.max(0, estimatedHeight);
+    }
+    
+    // If all else fails, return 0
     return 0;
   } catch (error) {
     console.error('Error getting current block height:', error);
@@ -250,6 +299,16 @@ app.post('/api/refresh-vtxos', async (req, res) => {
   try {
     const output = await executeBark('refresh');
     console.log('Refresh output:', output);
+    
+    // Controleer of de uitvoer de waarschuwing bevat dat er geen VTXOs zijn om te verversen
+    if (output.includes('no VTXO to refresh') || output.includes('There is no VTXO to refresh')) {
+      return res.status(400).json({ 
+        error: 'No VTXOs to refresh', 
+        message: 'There are no VTXOs that need to be refreshed at this time.',
+        details: output
+      });
+    }
+    
     res.json({ success: true, message: 'VTXOs refreshed successfully' });
   } catch (error) {
     console.error('Error refreshing VTXOs:', error);
@@ -272,7 +331,8 @@ app.post('/api/send', async (req, res) => {
     let args = [`${recipient}`];
     
     // If it's a Lightning invoice, we don't need to specify amount
-    const isLightningInvoice = recipient.toLowerCase().startsWith('lnbc');
+    // Check for both mainnet (lnbc) and signet (lntbs) invoice prefixes
+    const isLightningInvoice = recipient.toLowerCase().startsWith('lnbc') || recipient.toLowerCase().startsWith('lntbs');
     
     if (!isLightningInvoice && !amount) {
       return res.status(400).json({ error: 'Amount is required for non-Lightning invoice payments' });

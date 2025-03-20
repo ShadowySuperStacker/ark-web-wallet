@@ -283,12 +283,33 @@ async function refreshVtxos() {
             method: 'POST'
         });
         
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to refresh VTXOs');
-        }
-        
         const data = await response.json();
+        
+        if (!response.ok) {
+            // Specifieke afhandeling voor het geval er geen VTXOs zijn om te verversen
+            if (data.error === 'No VTXOs to refresh') {
+                showToast(data.message, 'info');
+                // Toon een informatieve modal
+                showGuidanceModal(
+                    'No VTXOs Need Refreshing',
+                    `
+                    <p class="mb-3">None of your VTXOs need to be refreshed at this time.</p>
+                    <p class="mb-3">VTXOs typically need refreshing when:</p>
+                    <ul class="list-disc pl-5 mb-3">
+                        <li>They are nearing their expiry height (shown in yellow)</li>
+                        <li>You want to combine several small VTXOs</li>
+                    </ul>
+                    <p>The system will automatically indicate when your VTXOs need refreshing.</p>
+                    `,
+                    'Understood',
+                    () => {}
+                );
+                return;
+            }
+            
+            // Anders, toon de standaard fout
+            throw new Error(data.error || 'Failed to refresh VTXOs');
+        }
         
         // Refresh the VTXO list and balance after successful refresh
         await fetchVtxos();
@@ -330,8 +351,8 @@ async function sendPayment() {
             return;
         }
         
-        // Check if it's a Lightning invoice (starts with lnbc)
-        const isLightningInvoice = recipient.toLowerCase().startsWith('lnbc');
+        // Check if it's a Lightning invoice (starts with lnbc or lntbs)
+        const isLightningInvoice = recipient.toLowerCase().startsWith('lnbc') || recipient.toLowerCase().startsWith('lntbs');
         
         // If it's not a Lightning invoice, amount is required
         if (!isLightningInvoice && !amount) {
