@@ -1,38 +1,47 @@
 // DOM Elements
-const balanceOffchain = document.getElementById('balance-offchain');
-const balanceOnchain = document.getElementById('balance-onchain');
-const balancePending = document.getElementById('balance-pending');
-const balanceTotal = document.getElementById('balance-total');
-const vtxoPubkeyInput = document.getElementById('vtxo-pubkey');
-const vtxosList = document.getElementById('vtxos-list');
-const vtxoRefreshBtn = document.getElementById('vtxo-refresh-btn');
-const refreshVtxosBtn = document.getElementById('refresh-vtxos-btn');
-const refreshBalanceBtn = document.getElementById('refresh-balance-btn');
-const copyPubkeyBtn = document.getElementById('copy-pubkey-btn');
-const paymentForm = document.getElementById('payment-form');
-const actionGuidanceModal = document.getElementById('actionGuidanceModal');
-const actionGuidanceModalTitle = document.getElementById('actionGuidanceModalTitle');
-const actionGuidanceModalBody = document.getElementById('actionGuidanceModalBody');
-const actionGuidanceButton = document.getElementById('actionGuidanceButton');
-const actionGuidanceModalClose = document.getElementById('actionGuidanceModalClose');
-const vtxoRefreshAlert = document.getElementById('vtxo-refresh-alert');
-const deleteWalletBtn = document.getElementById('delete-wallet-btn');
-const resetWalletModal = document.getElementById('resetWalletModal');
-const confirmDeleteWalletBtn = document.getElementById('confirm-delete-wallet');
-const closeStatusAlert = document.getElementById('close-status-alert');
-const walletStatusAlert = document.getElementById('wallet-status-alert');
-const resetModalClose = document.getElementById('reset-modal-close');
-const themeToggle = document.getElementById('theme-toggle');
+let balanceOffchain, balanceOnchain, balancePending, balanceTotal, vtxoPubkeyInput, 
+    vtxosList, vtxoRefreshBtn, refreshVtxosBtn, refreshBalanceBtn, copyPubkeyBtn, 
+    paymentForm, actionGuidanceModal, actionGuidanceModalTitle, actionGuidanceModalBody,
+    actionGuidanceButton, actionGuidanceModalClose, vtxoRefreshAlert, deleteWalletBtn,
+    resetWalletModal, confirmDeleteWalletBtn, resetModalClose, walletStatusAlert,
+    closeStatusAlertBtn, themeToggle, onchainBalanceEl, onchainAddressEl, boardAmountInput,
+    boardBtn, exitBtn, exitVtxoSelect, refreshOnchainBtn, copyOnchainAddressBtn;
 
-// Advanced Features Elements
-const onchainBalanceEl = document.getElementById('onchain-balance');
-const onchainAddressEl = document.getElementById('onchain-address');
-const copyOnchainAddressBtn = document.getElementById('copy-onchain-address-btn');
-const boardAmountInput = document.getElementById('board-amount');
-const refreshOnchainBtn = document.getElementById('refresh-onchain-btn');
-const boardBtn = document.getElementById('board-btn');
-const exitVtxoSelect = document.getElementById('exit-vtxo');
-const exitBtn = document.getElementById('exit-btn');
+// Initialize DOM references
+function initializeDOMReferences() {
+    balanceOffchain = document.getElementById('balance-offchain');
+    balanceOnchain = document.getElementById('balance-onchain');
+    balancePending = document.getElementById('balance-pending');
+    balanceTotal = document.getElementById('balance-total');
+    vtxoPubkeyInput = document.getElementById('vtxo-pubkey');
+    vtxosList = document.getElementById('vtxos-list');
+    vtxoRefreshBtn = document.getElementById('vtxo-refresh-btn');
+    refreshVtxosBtn = document.getElementById('refresh-vtxos-btn');
+    refreshBalanceBtn = document.getElementById('refresh-balance-btn');
+    copyPubkeyBtn = document.getElementById('copy-pubkey-btn');
+    paymentForm = document.getElementById('payment-form');
+    actionGuidanceModal = document.getElementById('actionGuidanceModal');
+    actionGuidanceModalTitle = document.getElementById('actionGuidanceModalTitle');
+    actionGuidanceModalBody = document.getElementById('actionGuidanceModalBody');
+    actionGuidanceButton = document.getElementById('actionGuidanceButton');
+    actionGuidanceModalClose = document.getElementById('actionGuidanceModalClose');
+    vtxoRefreshAlert = document.getElementById('vtxo-refresh-alert');
+    deleteWalletBtn = document.getElementById('delete-wallet-btn');
+    resetWalletModal = document.getElementById('resetWalletModal');
+    confirmDeleteWalletBtn = document.getElementById('confirm-delete-wallet');
+    resetModalClose = document.getElementById('reset-modal-close');
+    walletStatusAlert = document.getElementById('wallet-status-alert');
+    closeStatusAlertBtn = document.getElementById('close-status-alert');
+    themeToggle = document.getElementById('theme-toggle');
+    onchainBalanceEl = document.getElementById('onchain-balance');
+    onchainAddressEl = document.getElementById('onchain-address');
+    boardAmountInput = document.getElementById('board-amount');
+    boardBtn = document.getElementById('board-btn');
+    exitBtn = document.getElementById('exit-btn');
+    exitVtxoSelect = document.getElementById('exit-vtxo');
+    refreshOnchainBtn = document.getElementById('refresh-onchain-btn');
+    copyOnchainAddressBtn = document.getElementById('copy-onchain-address-btn');
+}
 
 // Variables
 let currentBlockHeight = 0;
@@ -50,23 +59,95 @@ function initTheme() {
     }
 }
 
-// Initialize theme
+// Don't execute this code immediately, wait for DOM
+// Initialize theme as it doesn't depend on DOM elements
 initTheme();
 
-themeToggle.addEventListener('click', () => {
-    if (document.documentElement.classList.contains('dark')) {
-        document.documentElement.classList.remove('dark');
-        localStorage.theme = 'light';
-    } else {
-        document.documentElement.classList.add('dark');
-        localStorage.theme = 'dark';
-    }
+// Wait for DOM before accessing elements
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize DOM references first
+    initializeDOMReferences();
+    
+    // Now we can add event listeners to DOM elements
+    themeToggle.addEventListener('click', () => {
+        if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+        }
+    });
+    
+    // Continue with other DOM-dependent initialization
+    setupEventListeners();
+    initApp();
 });
 
+// Setup event listeners after DOM is loaded
+function setupEventListeners() {
+    // Status alert handling
+    closeStatusAlertBtn.addEventListener('click', () => {
+        walletStatusAlert.classList.add('hidden');
+    });
+    
+    // Other event listeners
+    refreshBalanceBtn.addEventListener('click', fetchBalance);
+    refreshVtxosBtn.addEventListener('click', fetchVtxos);
+    vtxoRefreshBtn.addEventListener('click', refreshVtxos);
+    
+    copyPubkeyBtn.addEventListener('click', () => {
+        vtxoPubkeyInput.select();
+        document.execCommand('copy');
+        showToast('VTXO pubkey copied to clipboard', 'success');
+    });
+    
+    paymentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await sendPayment();
+    });
+    
+    deleteWalletBtn.addEventListener('click', () => {
+        openModal(resetWalletModal);
+    });
+    
+    confirmDeleteWalletBtn.addEventListener('click', async () => {
+        closeModal(resetWalletModal);
+        await deleteWallet();
+    });
+    
+    actionGuidanceModalClose.addEventListener('click', () => {
+        closeModal(actionGuidanceModal);
+    });
+    
+    resetModalClose.addEventListener('click', () => {
+        closeModal(resetWalletModal);
+    });
+    
+    // Advanced Features event listeners
+    refreshOnchainBtn.addEventListener('click', async () => {
+        await Promise.all([
+            fetchOnchainBalance(),
+            fetchOnchainAddress()
+        ]);
+        showToast('On-chain info refreshed', 'success');
+    });
+    
+    copyOnchainAddressBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(onchainAddressEl.title);
+        showToast('On-chain address copied to clipboard', 'success');
+    });
+    
+    boardBtn.addEventListener('click', boardFunds);
+    exitBtn.addEventListener('click', exitFunds);
+}
+
 // Status alert handling
-closeStatusAlert.addEventListener('click', () => {
-    walletStatusAlert.classList.add('hidden');
-});
+function setupStatusAlertHandling() {
+    closeStatusAlertBtn.addEventListener('click', () => {
+        walletStatusAlert.classList.add('hidden');
+    });
+}
 
 // Toast notification
 function showToast(message, type = 'info') {
@@ -108,30 +189,39 @@ function closeModal(modal) {
 }
 
 function showGuidanceModal(title, body, buttonText, buttonAction) {
-    actionGuidanceModalTitle.textContent = title;
-    actionGuidanceModalBody.innerHTML = body;
-    actionGuidanceButton.textContent = buttonText;
+    // Get fresh references to DOM elements to avoid any stale references
+    const modalTitle = document.getElementById('actionGuidanceModalTitle');
+    const modalBody = document.getElementById('actionGuidanceModalBody');
+    const actionButton = document.getElementById('actionGuidanceButton');
+    const modal = document.getElementById('actionGuidanceModal');
     
-    // Remove previous event listeners
-    const newButton = actionGuidanceButton.cloneNode(true);
-    actionGuidanceButton.parentNode.replaceChild(newButton, actionGuidanceButton);
+    if (!modal || !modalTitle || !modalBody || !actionButton) {
+        console.error('Modal elements not found');
+        showToast('Error: Could not show the guidance modal', 'error');
+        return;
+    }
     
-    // Add new event listener
+    // Update modal content
+    modalTitle.textContent = title;
+    modalBody.innerHTML = body;
+    actionButton.textContent = buttonText;
+    
+    // Remove all existing click listeners from the button
+    // by cloning and replacing it
+    const newButton = actionButton.cloneNode(true);
+    actionButton.parentNode.replaceChild(newButton, actionButton);
+    
+    // Add the new click event listener
     newButton.addEventListener('click', () => {
-        buttonAction();
-        closeModal(actionGuidanceModal);
+        if (typeof buttonAction === 'function') {
+            buttonAction();
+        }
+        modal.classList.add('hidden');
     });
     
-    openModal(actionGuidanceModal);
+    // Show the modal
+    modal.classList.remove('hidden');
 }
-
-actionGuidanceModalClose.addEventListener('click', () => {
-    closeModal(actionGuidanceModal);
-});
-
-resetModalClose.addEventListener('click', () => {
-    closeModal(resetWalletModal);
-});
 
 // Show wallet status
 function showWalletStatus(message) {
@@ -441,69 +531,32 @@ async function deleteWallet() {
     }
 }
 
-// Event Listeners
-refreshBalanceBtn.addEventListener('click', fetchBalance);
-refreshVtxosBtn.addEventListener('click', fetchVtxos);
-vtxoRefreshBtn.addEventListener('click', refreshVtxos);
-
-copyPubkeyBtn.addEventListener('click', () => {
-    vtxoPubkeyInput.select();
-    document.execCommand('copy');
-    showToast('VTXO pubkey copied to clipboard', 'success');
-});
-
-paymentForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await sendPayment();
-});
-
-deleteWalletBtn.addEventListener('click', () => {
-    openModal(resetWalletModal);
-});
-
-confirmDeleteWalletBtn.addEventListener('click', async () => {
-    closeModal(resetWalletModal);
-    await deleteWallet();
-});
-
-// Initialize application
+// Function to initialize the app
 async function initApp() {
     try {
-        // Check wallet status
-        const response = await fetch('/api/wallet-status');
-        const data = await response.json();
+        // Initialize DOM references first
+        initializeDOMReferences();
         
-        if (!data.initialized) {
-            // Show initializing message
-            showWalletStatus('Initializing new wallet... This may take a moment.');
-            
-            // Initialize wallet
-            const initResponse = await fetch('/api/init-wallet', { method: 'POST' });
-            if (!initResponse.ok) {
-                const errorData = await initResponse.json();
-                throw new Error(errorData.error || 'Failed to initialize wallet');
-            }
-            
-            // Hide the status alert
-            walletStatusAlert.classList.add('hidden');
-        }
+        // Initialize theme
+        initTheme();
         
-        // Load initial data
+        // Setup event handlers that depend on DOM elements
+        setupEventListeners();
+        
+        // Fetch initial data
         await Promise.all([
             fetchBalance(),
-            fetchVtxoPubkey(),
-            fetchVtxos()
+            fetchVtxos(),
+            fetchVtxoPubkey()
         ]);
         
+        // Initialize advanced features
+        await initAdvancedFeatures();
     } catch (error) {
         console.error('Error initializing app:', error);
-        showToast('Error initializing app: ' + error.message, 'error');
-        showWalletStatus('Error initializing wallet. Please try reloading the page.');
+        showToast('Error initializing wallet. Please refresh the page.', 'error');
     }
 }
-
-// Start the application
-initApp();
 
 // Advanced Features API Functions
 async function fetchOnchainBalance() {
@@ -689,24 +742,6 @@ function updateExitVtxoSelect() {
     });
 }
 
-// Additional Event Listeners for Advanced Features
-refreshOnchainBtn.addEventListener('click', async () => {
-    await Promise.all([
-        fetchOnchainBalance(),
-        fetchOnchainAddress()
-    ]);
-    showToast('On-chain info refreshed', 'success');
-});
-
-copyOnchainAddressBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(onchainAddressEl.title);
-    showToast('On-chain address copied to clipboard', 'success');
-});
-
-boardBtn.addEventListener('click', boardFunds);
-
-exitBtn.addEventListener('click', exitFunds);
-
 // Extend fetchVtxos to update the exit VTXO select
 const originalFetchVtxos = fetchVtxos;
 fetchVtxos = async function() {
@@ -725,14 +760,4 @@ async function initAdvancedFeatures() {
     } catch (error) {
         console.error('Error initializing advanced features:', error);
     }
-}
-
-// Extend the initApp function to also initialize advanced features
-const originalInitApp = initApp;
-initApp = async function() {
-    await originalInitApp.apply(this, arguments);
-    await initAdvancedFeatures();
-};
-
-// Initialize advanced features immediately
-initAdvancedFeatures(); 
+} 
