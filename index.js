@@ -209,10 +209,29 @@ app.post('/api/delete-wallet', async (req, res) => {
 
 // Start the server after checking prerequisites
 checkServerPrerequisites((ready) => {
-  app.listen(port, () => {
-    console.log(`Ark wallet interface running at http://localhost:${port}`);
-    if (!ready) {
-      console.warn('Warning: Server started but wallet initialization failed. Some functions may not work.');
-    }
-  });
+  // Try different ports if the default is in use
+  function tryPort(portToTry) {
+    const server = app.listen(portToTry, () => {
+      console.log(`Ark wallet interface running at http://localhost:${portToTry}`);
+      if (!ready) {
+        console.warn('Warning: Server started but wallet initialization failed. Some functions may not work.');
+      }
+    }).on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${portToTry} is in use, trying another port...`);
+        if (portToTry < 3003) {
+          tryPort(portToTry + 1);
+        } else {
+          console.error('All alternative ports are in use. Please close some applications and try again.');
+          process.exit(1);
+        }
+      } else {
+        console.error('Error starting server:', err);
+        process.exit(1);
+      }
+    });
+  }
+  
+  // Start with the default port
+  tryPort(port);
 }); 
