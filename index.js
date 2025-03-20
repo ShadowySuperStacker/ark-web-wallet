@@ -447,7 +447,21 @@ app.get('/api/onchain-balance', async (req, res) => {
   try {
     const output = await executeBark('onchain', ['balance']);
     
-    // Try to parse the output to get the balance
+    // Try to parse the JSON output first
+    try {
+      const jsonData = JSON.parse(output);
+      if (jsonData && jsonData.total_sat !== undefined) {
+        res.json({ 
+          balance: jsonData.total_sat,
+          details: output 
+        });
+        return;
+      }
+    } catch (jsonError) {
+      console.log('Could not parse JSON, falling back to regex parsing');
+    }
+    
+    // Fallback to regex parsing if JSON parsing fails
     const balanceMatch = output.match(/Total:\s+([\d,]+)/);
     const balance = balanceMatch ? parseInt(balanceMatch[1].replace(/,/g, '')) : 0;
     
