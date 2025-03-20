@@ -16,7 +16,7 @@ This project provides a web interface that simplifies interaction with the `bark
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v20 or higher)
 - The `bark` command-line tool (must be installed separately)
 
 ## Installation
